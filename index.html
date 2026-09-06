@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="BioMind: el ecosistema inteligente para los laboratorios de biotecnología vegetal." />
+    <title>BioMind | Laboratorio que aprende contigo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="header">
+      <a class="brand" href="#inicio" aria-label="BioMind, inicio">
+        <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 26v13M24 19c-6.7 0-10-4.2-11.3-9.5C19.4 9.2 23.5 12.3 24 19Z"/><path d="M24 19c.5-6.7 4.6-9.8 11.3-9.5C34 14.8 30.7 19 24 19Z"/><path class="soil" d="M10 26c2-5 8-7 14-7s12 2 14 7H10Z"/><path d="M8 41h32"/></svg>
+        <span>Bio<span>Mind</span></span>
+      </a>
+      <button class="menu-toggle" aria-label="Abrir menú" aria-expanded="false"><span></span><span></span><span></span></button>
+      <nav class="nav" aria-label="Navegación principal">
+        <a href="#solucion">La solución</a>
+        <a href="#funciones">Funcionalidades</a>
+        <a href="#impacto">Impacto</a>
+        <a class="nav-cta open-auth" href="/app/">Ingresar <span>→</span></a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" id="inicio">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="eyebrow-dot"></span> BIOTECNOLOGÍA VEGETAL · SENA</p>
+          <h1>Un laboratorio que <em>aprende</em> contigo.</h1>
+          <p class="hero-text">BioMind transforma cada práctica en una experiencia de aprendizaje guiada, organizada y siempre disponible.</p>
+          <div class="hero-actions">
+            <a class="button button-primary open-auth" href="/app/">Ingresa a BioMind <span>→</span></a>
+            <a class="button button-ghost" href="#solucion"><span class="play">▶</span> Descubre cómo funciona</a>
+          </div>
+          <div class="people-proof"><div class="avatars"><span>SC</span><span>MR</span><span>AC</span></div><p>Creado para los laboratorios del <br><strong>SENA</strong></p></div>
+        </div>
+        <div class="hero-art" aria-label="Ilustración de cultivo vegetal y laboratorio">
+          <div class="sun-glow"></div><span class="floating-chip chip-one">Registro activo <i></i></span><span class="floating-chip chip-two">23°C &nbsp;·&nbsp; Óptimo</span>
+          <div class="orbital orbital-one"></div><div class="orbital orbital-two"></div>
+          <svg class="lab-illustration" viewBox="0 0 560 560" aria-hidden="true">
+            <path class="leaf leaf-left" d="M153 222c-55-16-81-60-72-118 57 8 91 39 92 95-9 9-14 16-20 23Z"/>
+            <path class="leaf leaf-right" d="M246 204c8-59 46-91 103-91-1 58-30 97-89 109-4-10-8-14-14-18Z"/>
+            <path class="stem" d="M233 348V213M233 275l-58-46M233 250l55-42"/>
+            <path class="soil-mound" d="M116 349c22-53 77-81 124-81s105 31 132 81H116Z"/>
+            <path class="bench" d="M83 351h325M123 351l-27 109M367 351l28 109"/>
+            <rect class="glass" x="169" y="351" width="129" height="111" rx="6"/>
+            <path class="water" d="M175 424c27-16 83-16 117 0v32H175Z"/>
+            <circle class="bubble" cx="309" cy="306" r="7"/><circle class="bubble small" cx="330" cy="283" r="4"/>
+            <path class="dna" d="M430 170c-35 25-35 64 0 89 35 25 35 64 0 89M477 170c35 25 35 64 0 89-35 25-35 64 0 89M433 198h41M433 320h41M433 259h41"/>
+          </svg>
+          <div class="voice-card"><div class="voice-icon">⌁</div><div><small>ASISTENTE DE VOZ</small><strong>“Observación guardada”</strong></div><span class="sound"><i></i><i></i><i></i><i></i></span></div>
+        </div>
+      </section>
+
+      <section class="trust-strip"><p>Diseñado para potenciar el aprendizaje en</p><div><span>LABORATORIOS DE BIOTECNOLOGIA VEGETAL</span></section>
+
+      <section class="problem section" id="solucion">
+        <div class="section-intro"><p class="eyebrow">DEL CAOS A LA CLARIDAD</p><h2>Cada dato importa.<br><em>Nada debería perderse.</em></h2></div>
+        <p class="section-description">En el laboratorio, las manos están ocupadas y la atención no puede dividirse. BioMind acompaña el proceso para que el conocimiento quede donde debe estar: al alcance de todos.</p>
+        <div class="feature-grid" id="funciones">
+          <article class="feature-card"><div class="feature-icon mint">⌁</div><p class="card-number">01</p><h3>Registra sin detenerte</h3><p>Habla naturalmente mientras trabajas. BioMind transcribe, clasifica y guarda tus observaciones.</p><a href="#contacto">Registro por voz <span>→</span></a></article>
+          <article class="feature-card featured"><div class="feature-icon dark">✦</div><p class="card-number">02</p><h3>Ve el progreso completo</h3><p>Proyectos, evidencias y avances organizados en una línea de tiempo clara y visual.</p><a href="#contacto">Proyectos inteligentes <span>→</span></a><div class="card-progress"><div><span>Cultivo in vitro</span><b>78%</b></div><i><em></em></i><small>Etapa 3 de 4 · Multiplicación</small></div></article>
+          <article class="feature-card"><div class="feature-icon lavender">◌</div><p class="card-number">03</p><h3>Aprende con respaldo</h3><p>Accede a protocolos, guías y respuestas cuando las necesitas, incluso sin conexión.</p><a href="#contacto">Guías al instante <span>→</span></a></article>
+        </div>
+      </section>
+
+      <section class="dashboard-section" id="impacto">
+        <div class="dashboard-copy"><p class="eyebrow light">PARA INSTRUCTORES,APRENDICES Y PASANTES</p><h2>Visibilidad para guiar.<br><em>Autonomía para crecer.</em></h2><p>Dos espacios conectados, una misma misión: transformar el seguimiento en acompañamiento real.</p><ul><li><span>✓</span> Alertas inteligentes y oportunas</li><li><span>✓</span> Evidencias siempre trazables</li><li><span>✓</span> Retroalimentación que llega a tiempo</li></ul><a class="button button-light" href="#contacto">Explora nuetra aplicacion<span>→</span></a></div>
+        <div class="dashboard-mockup"><div class="mockup-top"><span class="mini-logo">✦</span><span>Hola, Elkin <b>⌄</b></span><i></i></div><div class="mockup-content"><p>Aprendiz </p><h3>Buen día,Elkin <span>☀</span></h3><div class="mockup-stats"><div><b>03</b><span>Proyectos<br>activos</span></div><div><b>12</b><span>Registros<br>este mes</span></div></div><p class="today">PARA HOY</p><div class="mockup-task"><i>◉</i><div><b>Registrar observaciones</b><span>Cultivo in vitro · Día 14</span></div><em>›</em></div><div class="mockup-voice"><span>⌁</span><div><b>¿Tienes una observación?</b><small>Presiona y registra por voz</small></div><i>●</i></div></div></div>
+      </section>
+
+      <section class="impact section"><p class="eyebrow">UN ECOSISTEMA QUE FLORECE</p><h2>Hecho para mejorar<br>cada práctica.</h2><div class="metric-grid"><div><b>92<sup>%</sup></b><p>de usuarios pidió una<br>herramienta centralizada</p></div><div><b>100<sup>%</sup></b><p>de los registros con<br>autor y fecha</p></div><div><b>0</b><p>papeles extraviados<br>en el proceso</p></div></div></section>
+
+      <section class="cta-section" id="contacto"><div class="cta-leaf leaf-a"></div><div class="cta-leaf leaf-b"></div><p class="eyebrow">EL FUTURO EMPIEZA HOY</p><h2>Hagamos que cada<br>práctica <em>cuente.</em></h2><p>BioMind está listo para transformar la formación en biotecnología vegetal.</p><a class="button button-primary" href="/app/">Quiero conocer BioMind <span>→</span></a></section>
+    </main>
+    <footer><a class="brand" href="#inicio"><svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 26v13M24 19c-6.7 0-10-4.2-11.3-9.5C19.4 9.2 23.5 12.3 24 19Z"/><path d="M24 19c.5-6.7 4.6-9.8 11.3-9.5C34 14.8 30.7 19 24 19Z"/><path class="soil" d="M10 26c2-5 8-7 14-7s12 2 14 7H10Z"/><path d="M8 41h32"/></svg><span>Bio<span>Mind</span></span></a><p>El ecosistema digital del laboratorio.</p><small>© 2026 BioMind · SENA</small></footer>
+<script src="landing.js" defer></script>
+</body>
+</html>
