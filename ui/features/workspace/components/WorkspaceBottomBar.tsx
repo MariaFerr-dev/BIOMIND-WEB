@@ -1,14 +1,22 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ComponentProps } from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Image, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+
+const biomindLogo = require('../../../assets/images/biomind-logo.png');
 
 export type BottomBarIconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 export type BottomBarTab = {
   id: string;
   icon: BottomBarIconName;
+};
+
+export type SideSubmenuItem = {
+  id: string;
+  icon: BottomBarIconName;
+  label: string;
 };
 
 type BottomBarTone = {
@@ -24,6 +32,12 @@ type WorkspaceBottomBarProps = {
   bottomInset: number;
   centerIcon?: BottomBarIconName;
   centerTabId?: string;
+  sideSubmenu?: {
+    activeId: string;
+    items: SideSubmenuItem[];
+    onPress: (id: string) => void;
+    parentId: string;
+  };
   tabs: BottomBarTab[];
   tone?: BottomBarTone;
   onCenterPress: () => void;
@@ -49,6 +63,7 @@ export function WorkspaceBottomBar({
   bottomInset,
   centerIcon = 'star-outline',
   centerTabId = 'asistente',
+  sideSubmenu,
   tabs,
   tone = defaultTone,
   onCenterPress,
@@ -57,11 +72,90 @@ export function WorkspaceBottomBar({
   const leftTabs = tabs.slice(0, 2);
   const rightTabs = tabs.slice(2, 4);
   const isCenterActive = activeTab === centerTabId;
-  const width = useWindowDimensions().width;
-  const barWidth = Math.min(width - 36, 640);
+  const { width } = useWindowDimensions();
+  const showSideBar = Platform.OS === 'web' && width >= 760;
+  const allTabs = [
+    ...leftTabs,
+    { id: centerTabId, icon: centerIcon },
+    ...rightTabs,
+  ];
+
+  if (showSideBar) {
+    return (
+      <View style={[styles.sideBar, { borderColor: `${tone.activePill}33`, shadowColor: tone.centerShadow }]}>
+        <View style={styles.sideHeader}>
+          <View style={styles.sideBrandRow}>
+            <Image source={biomindLogo} resizeMode="contain" style={styles.sideLogo} />
+            <Text style={[styles.sideBrand, { color: tone.activeIcon }]}>BIOMIND</Text>
+          </View>
+        </View>
+
+        <View style={styles.sideNav}>
+          {allTabs.map((tab) => {
+            const active = activeTab === tab.id;
+            return (
+              <View key={tab.id}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={tabLabels[tab.id] || tab.id}
+                  accessibilityState={{ selected: active }}
+                  onPress={() => (tab.id === centerTabId ? onCenterPress() : onTabPress(tab.id))}
+                  style={[
+                    styles.sideTab,
+                    active && {
+                      backgroundColor: `${tone.activePill}18`,
+                      borderColor: `${tone.activePill}55`,
+                    },
+                  ]}
+                >
+                <View style={[styles.sideIcon, { backgroundColor: `${tone.activePill}12` }, active && { backgroundColor: tone.activePill }]}>
+                    <MaterialCommunityIcons
+                      name={tab.icon}
+                      size={21}
+                      color={active ? '#FFFFFF' : tone.inactiveIcon}
+                    />
+                  </View>
+                  <Text style={[styles.sideText, { color: active ? tone.activeIcon : tone.inactiveIcon }]}>
+                    {tabLabels[tab.id] || tab.id}
+                  </Text>
+                </Pressable>
+
+                {active && sideSubmenu?.parentId === tab.id ? (
+                  <View style={styles.sideSubmenu}>
+                    {sideSubmenu.items.map((item) => {
+                      const subActive = sideSubmenu.activeId === item.id;
+                      return (
+                        <Pressable
+                          key={item.id}
+                          accessibilityRole="button"
+                          accessibilityLabel={item.label}
+                          accessibilityState={{ selected: subActive }}
+                          onPress={() => sideSubmenu.onPress(item.id)}
+                          style={[styles.sideSubmenuItem, subActive && { backgroundColor: `${tone.activePill}12` }]}
+                        >
+                          <MaterialCommunityIcons
+                            name={item.icon}
+                            size={15}
+                            color={subActive ? tone.activeIcon : tone.inactiveIcon}
+                          />
+                          <Text style={[styles.sideSubmenuText, { color: subActive ? tone.activeIcon : tone.inactiveIcon }]}>
+                            {item.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                ) : null}
+              </View>
+            );
+          })}
+        </View>
+      </View>
+    );
+  }
 
   return (
-    <View style={[styles.wrapper, { bottom: Math.max(bottomInset, 16), width: barWidth, left: '50%', right: undefined, marginLeft: -barWidth / 2 }]}>
+    <View style={[styles.wrapper, { bottom: Math.max(bottomInset, 12) - 40 }]}>
       {/* Sombra verde suave debajo de la barra */}
       <View style={styles.shadow} />
 
@@ -74,7 +168,6 @@ export function WorkspaceBottomBar({
           <TabButton
             key={tab.id}
             active={activeTab === tab.id}
-            label={tabLabels[tab.id] || tab.id}
             icon={tab.icon}
             tone={tone}
             onPress={() => onTabPress(tab.id)}
@@ -88,7 +181,6 @@ export function WorkspaceBottomBar({
           <TabButton
             key={tab.id}
             active={activeTab === tab.id}
-            label={tabLabels[tab.id] || tab.id}
             icon={tab.icon}
             tone={tone}
             onPress={() => onTabPress(tab.id)}
@@ -98,8 +190,6 @@ export function WorkspaceBottomBar({
 
       {/* Botón central flotante con brillo */}
       <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={tabLabels[centerTabId] || centerTabId}
         onPress={onCenterPress}
         style={styles.centerButtonWrap}
       >
@@ -121,6 +211,19 @@ export function WorkspaceBottomBar({
     </View>
   );
 }
+
+const tabLabels: Record<string, string> = {
+  academico: 'Académico',
+  aprendices: 'Aprendices',
+  asistente: 'Asistente',
+  historial: 'Bitácoras',
+  inicio: 'Inicio',
+  perfil: 'Perfil',
+  proyectos: 'Proyectos',
+  seguimiento: 'Seguimiento',
+  trimestres: 'Trimestres',
+  usuarios: 'Usuarios',
+};
 
 /**
  * Barra con hueco circular SVG.
@@ -195,33 +298,118 @@ function BarWithCutout() {
 
 function TabButton({
   active,
-  label,
   icon,
   tone,
   onPress,
 }: {
   active: boolean;
-  label: string;
   icon: BottomBarIconName;
   tone: BottomBarTone;
   onPress: () => void;
 }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected: active }} onPress={onPress} style={styles.tabButton}>
+    <Pressable onPress={onPress} style={styles.tabButton}>
       <MaterialCommunityIcons
         name={icon}
         size={24}
         color={active ? tone.activeIcon : tone.inactiveIcon}
       />
-      {active && <View style={[styles.activePill, { backgroundColor: tone.activePill }]} />}
-      <Text style={{ fontSize: 10, color: active ? tone.activeIcon : tone.inactiveIcon, marginTop: 3 }}>{label}</Text>
+      {active ? <View style={[styles.activePill, { backgroundColor: tone.activePill }]} /> : null}
     </Pressable>
   );
 }
 
-const tabLabels: Record<string, string> = { inicio: 'Inicio', historial: 'Historial', proyectos: 'Proyectos', perfil: 'Perfil', usuarios: 'Usuarios', academico: 'Académico', trimestres: 'Trimestres', aprendices: 'Aprendices', asistente: 'Asistente' };
-
 const styles = StyleSheet.create({
+  sideBar: {
+    position: 'absolute',
+    left: 30,
+    top: 30,
+    bottom: 30,
+    width: 238,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E2EFEA',
+    borderWidth: 1,
+    padding: 22,
+    shadowColor: '#0B5F55',
+    shadowOpacity: 0.1,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 16 },
+    elevation: 12,
+    zIndex: 20,
+  },
+  sideHeader: {
+    gap: 3,
+    marginBottom: 30,
+  },
+  sideBrandRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+  },
+  sideLogo: {
+    height: 38,
+    width: 38,
+  },
+  sideBrand: {
+    color: '#117C72',
+    fontFamily: 'PoppinsSemiBold',
+    fontSize: 26,
+    letterSpacing: 0,
+  },
+  sideCaption: {
+    color: '#8AA69C',
+    fontFamily: 'PoppinsRegular',
+    fontSize: 12,
+  },
+  sideNav: {
+    gap: 8,
+  },
+  sideSubmenu: {
+    borderLeftColor: '#E8EEE9',
+    borderLeftWidth: 1,
+    gap: 3,
+    marginLeft: 30,
+    marginTop: 7,
+    paddingLeft: 11,
+  },
+  sideSubmenuItem: {
+    alignItems: 'center',
+    borderRadius: 12,
+    flexDirection: 'row',
+    gap: 8,
+    minHeight: 34,
+    paddingHorizontal: 9,
+  },
+  sideSubmenuText: {
+    flex: 1,
+    fontFamily: 'PoppinsMedium',
+    fontSize: 11,
+    lineHeight: 14,
+  },
+  sideTab: {
+    alignItems: 'center',
+    borderColor: 'transparent',
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    minHeight: 56,
+    paddingHorizontal: 12,
+  },
+  sideIcon: {
+    alignItems: 'center',
+    backgroundColor: '#F3FAF7',
+    borderRadius: 13,
+    height: 36,
+    justifyContent: 'center',
+    width: 36,
+  },
+  sideText: {
+    flex: 1,
+    fontFamily: 'PoppinsSemiBold',
+    fontSize: 13,
+  },
   wrapper: {
     position: 'absolute',
     left: 18,

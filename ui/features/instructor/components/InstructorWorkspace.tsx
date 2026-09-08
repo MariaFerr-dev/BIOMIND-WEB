@@ -1,4 +1,4 @@
-import { GeminiAssistantModule } from '@/features/workspace/components/GeminiAssistantModule';
+import { ProjectConversations } from '@/features/workspace/components/ProjectConversations';
 import { UserAvatar } from '@/features/workspace/components/UserAvatar';
 import { type BottomBarTab, WorkspaceBottomBar } from '@/features/workspace/components/WorkspaceBottomBar';
 import type {
@@ -7,14 +7,12 @@ import type {
 } from '@/features/workspace/types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
-import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { assistantPrompts, learnerRoster, projectSnapshots } from '../data';
 import { instructorPalette } from '../theme';
+import { InstructorAIAssistant } from './InstructorAIAssistant';
 import { InstructorHomeTab } from './InstructorHomeTab';
-import { InstructorLearnersTab, type LearnerFilter } from './InstructorLearnersTab';
 import { InstructorProfileTab } from './InstructorProfileTab';
 import { InstructorProjectsTab } from './InstructorProjectsTab';
 
@@ -22,8 +20,8 @@ type InstructorTab = 'inicio' | 'aprendices' | 'asistente' | 'proyectos' | 'perf
 
 const tabs: BottomBarTab[] = [
   { id: 'inicio', icon: 'home-variant-outline' },
-  { id: 'aprendices', icon: 'account-group-outline' },
-  { id: 'proyectos', icon: 'clipboard-text-outline' },
+  { id: 'aprendices', icon: 'school-outline' },
+  { id: 'proyectos', icon: 'message-text-outline' },
   { id: 'perfil', icon: 'account-circle-outline' },
 ];
 
@@ -34,13 +32,14 @@ type InstructorWorkspaceProps = {
 
 export function InstructorWorkspace({ onSignOut, session }: InstructorWorkspaceProps) {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const desktop = Platform.OS === 'web' && width >= 760;
   const [activeTab, setActiveTab] = useState<InstructorTab>('inicio');
-  const [activeFilter, setActiveFilter] = useState<LearnerFilter>('Todos');
   const [voiceEnabled, setVoiceEnabled] = useState(true);
-  const [autoFeedbackEnabled, setAutoFeedbackEnabled] = useState(true);
-  const [offlineEnabled, setOfflineEnabled] = useState(true);
-  const [dualAssistantEnabled, setDualAssistantEnabled] = useState(true);
+  const [showHomeNews, setShowHomeNews] = useState(true);
+  const [showHomeProjects, setShowHomeProjects] = useState(true);
   const [assistantChatChannel, setAssistantChatChannel] = useState<WorkspaceChatChannel>('ai');
+  const [newsTarget, setNewsTarget] = useState<{ projectId?: string; bitacoraId?: string; conversationId?: string }>({});
 
   const [fontsLoaded] = useFonts({
     PoppinsRegular: require('../../../assets/fonts/Poppins-Regular.ttf'),
@@ -49,64 +48,72 @@ export function InstructorWorkspace({ onSignOut, session }: InstructorWorkspaceP
     SulphurPointBold: require('../../../assets/fonts/SulphurPoint-Bold.ttf'),
   });
 
-  const roster = useMemo(() => {
-    if (activeFilter === 'Todos') {
-      return learnerRoster;
-    }
-
-    return learnerRoster.filter((learner) => learner.status === activeFilter);
-  }, [activeFilter]);
-
   if (!fontsLoaded) {
     return null;
   }
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="dark" />
-      <View style={styles.screen}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
+        style={[styles.screen, desktop && styles.desktopScreen]}>
         <ScrollView
+          keyboardDismissMode="interactive"
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 124 }]}>
+          contentContainerStyle={[styles.scrollContent, desktop && styles.desktopScrollContent, { paddingBottom: insets.bottom + 124 }]}>
           {activeTab === 'inicio' ? <HeaderCard session={session} /> : null}
 
-          {activeTab === 'inicio' && <InstructorHomeTab session={session} onOpenChatChannel={(channel) => {
-            setAssistantChatChannel(channel);
-            setActiveTab('asistente');
-          }} />}
-          {activeTab === 'aprendices' && (
-            <InstructorLearnersTab activeFilter={activeFilter} onFilterChange={setActiveFilter} roster={roster} />
-          )}
-          {activeTab === 'asistente' && (
-            <GeminiAssistantModule
-              composerPlaceholder="Escribe acá tu mensaje"
-              emptyStateLabel="Modo laboratorio guiado"
-              projects={projectSnapshots.map((project) => ({
-                id: project.id,
-                title: `${project.title} - ${project.species}`,
-              }))}
-              prompts={assistantPrompts}
-              roleLabel="Instructor IA"
+          {activeTab === 'inicio' && (
+            <InstructorHomeTab
               session={session}
-              subtitle="Historial por proyecto, guardado en Firestore y listo para que el backend evolucione el flujo."
-              systemContext="Eres Biomind IA para instructores de biotecnología vegetal. Ayudas a revisar lotes, redactar retroalimentación, resumir observaciones, responder dudas y orientar decisiones de laboratorio."
-              title="Asistente IA del laboratorio"
-              voiceEnabled={voiceEnabled}
-              chatChannel={assistantChatChannel}
-              welcomeMessage="Hola. Soy tu asistente de Biomind con Gemini. Puedo ayudarte a analizar un lote, redactar retroalimentación para aprendices o resumir observaciones técnicas con claridad."
+              showNews={showHomeNews}
+              showRecentProjects={showHomeProjects}
+              onOpenNews={(target) => {
+                setNewsTarget(target);
+                setActiveTab(target.action === 'chat' ? 'proyectos' : 'aprendices');
+              }}
+              onOpenChatChannel={(channel) => {
+                setAssistantChatChannel(channel);
+                setActiveTab('asistente');
+              }}
             />
           )}
-          {activeTab === 'proyectos' && <InstructorProjectsTab />}
-          {activeTab === 'perfil' && (
-            <InstructorProfileTab
-              autoFeedbackEnabled={autoFeedbackEnabled}
-              dualAssistantEnabled={dualAssistantEnabled}
-              offlineEnabled={offlineEnabled}
+          {activeTab === 'aprendices' && (
+            <InstructorProjectsTab session={session} focus={newsTarget} />
+          )}
+          {activeTab === 'asistente' && (
+            <InstructorAIAssistant
+              chatChannel={assistantChatChannel}
               session={session}
               voiceEnabled={voiceEnabled}
-              onAutoFeedbackChange={setAutoFeedbackEnabled}
-              onDualAssistantChange={setDualAssistantEnabled}
-              onOfflineChange={setOfflineEnabled}
+            />
+          )}
+          {activeTab === 'proyectos' && (
+            <ProjectConversations
+              preferredConversationId={newsTarget.conversationId}
+              session={session}
+              tone={{
+                accent: instructorPalette.primary,
+                background: instructorPalette.background,
+                border: instructorPalette.border,
+                incoming: instructorPalette.surface,
+                muted: instructorPalette.textMuted,
+                outgoing: instructorPalette.mint,
+                surface: instructorPalette.surface,
+                text: instructorPalette.text,
+              }}
+            />
+          )}
+          {activeTab === 'perfil' && (
+            <InstructorProfileTab
+              session={session}
+              showHomeNews={showHomeNews}
+              showHomeProjects={showHomeProjects}
+              voiceEnabled={voiceEnabled}
+              onShowHomeNewsChange={setShowHomeNews}
+              onShowHomeProjectsChange={setShowHomeProjects}
               onSignOut={onSignOut}
               onVoiceChange={setVoiceEnabled}
             />
@@ -122,7 +129,7 @@ export function InstructorWorkspace({ onSignOut, session }: InstructorWorkspaceP
           onCenterPress={() => setActiveTab('asistente')}
           onTabPress={(tabId) => setActiveTab(tabId as InstructorTab)}
         />
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -168,18 +175,28 @@ const styles = StyleSheet.create({
     backgroundColor: instructorPalette.background,
     paddingHorizontal: 3,
   },
+  desktopScreen: {
+    paddingLeft: 300,
+    paddingRight: 44,
+  },
   scrollContent: {
     paddingHorizontal: 20,
-    gap: 22,
+    gap: 24,
+  },
+  desktopScrollContent: {
+    alignSelf: 'center',
+    maxWidth: 1240,
+    paddingTop: 38,
+    width: '100%',
   },
   headerCard: {
-    paddingTop: 18,
+    paddingTop: 20,
     marginHorizontal: -20,
     paddingHorizontal: 28,
-    paddingBottom: 18,
+    paddingBottom: 22,
     backgroundColor: instructorPalette.background,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   headerTopRow: {
     flexDirection: 'row',
@@ -189,7 +206,7 @@ const styles = StyleSheet.create({
   },
   headerBadge: {
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 7,
     borderRadius: 999,
     backgroundColor: '#2FC4B1',
   },
@@ -203,9 +220,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 7,
     borderRadius: 999,
-
+    borderColor: instructorPalette.border,
+    borderWidth: 1,
     backgroundColor: instructorPalette.surfaceMuted,
   },
 
@@ -229,9 +247,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: instructorPalette.dark,
     fontFamily: 'SulphurPointBold',
-    fontSize: 34,
+    fontSize: 32,
     lineHeight: 34,
-    marginTop: 15,
+    marginTop: 16,
   },
 
   headerSubtitle: {

@@ -14,7 +14,7 @@ createServer((request, response) => {
   let requested;
   try { requested = decodeURIComponent(new URL(request.url, 'http://localhost').pathname); }
   catch { response.writeHead(400).end('Solicitud inválida'); return; }
-  if (!['/', '/index.html', '/styles.css', '/landing.js'].includes(requested) && !requested.startsWith('/app/')) {
+  if (!['/', '/index.html', '/styles.css', '/landing.js'].includes(requested) && !requested.startsWith('/app/') && !requested.startsWith('/assets/')) {
     if (requested === '/app') { response.writeHead(302, { Location: '/app/' }).end(); return; }
     response.writeHead(404).end('No encontrado'); return;
   }

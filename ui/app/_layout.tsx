@@ -7,21 +7,26 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
-import { View } from 'react-native';
 
 // A root layout in a React framework (like Next.js or Expo Router) is a required, 
 // top-level UI component that wraps all pages in the application.
 
 export default function RootLayout() {
   return (
-    <View style={{ flex: 1, backgroundColor: '#F5F3EE' }}>
-    <SafeAreaProvider style={{ flex: 1, width: '100%' }}>
-      <Stack>
+    <SafeAreaProvider>
+      <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="dashboard/dashboard" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="dashboard/dashboard"
+          options={{
+            gestureEnabled: false,
+            headerBackVisible: false,
+            headerShown: false,
+            title: '',
+          }}
+        />
       </Stack>
-      <StatusBar style="auto" />
+      <StatusBar backgroundColor="transparent" style="dark" translucent />
     </SafeAreaProvider>
-    </View>
   );
 }

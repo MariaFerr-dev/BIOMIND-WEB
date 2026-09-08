@@ -1,7 +1,9 @@
 import { useFonts } from 'expo-font';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Animated as RNAnimated, Easing, Image, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Animated as RNAnimated, Easing, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import InicioIllustration from '../../../assets/images/inicio.svg';
+import IngresoIllustration from '../../../assets/images/ingreso.svg';
 import { authScreenStyles } from '../styles/authScreen.styles';
 import type {
   AuthAlert,
@@ -15,11 +17,13 @@ import { RegisterForm } from './RegisterForm';
 import { VerifyEmailForm } from './VerifyEmailForm';
 import { WelcomeView } from './WelcomeView';
 
+const biomindLogo = require('../../../assets/images/biomind-logo.png');
+
 export function AuthScreen() {
   const viewport = useWindowDimensions();
   const height = viewport.height;
   const width = Math.min(viewport.width, 1280);
-  const desktop = viewport.width >= 900;
+  const desktop = Platform.OS === 'web' && viewport.width >= 900;
   const router = useRouter();
   const [vista, setVista] = useState<AuthView>('bienvenida');
   const [welcomeLogoY, setWelcomeLogoY] = useState<number | null>(null);
@@ -32,6 +36,9 @@ export function AuthScreen() {
   const [fontsLoaded] = useFonts({
     SulphurPoint: require('../../../assets/fonts/SulphurPoint-Light.ttf'),
     SulphurPointBold: require('../../../assets/fonts/SulphurPoint-Bold.ttf'),
+    PoppinsRegular: require('../../../assets/fonts/Poppins-Regular.ttf'),
+    PoppinsMedium: require('../../../assets/fonts/Poppins/Poppins-Medium.ttf'),
+    PoppinsSemiBold: require('../../../assets/fonts/Poppins/Poppins-SemiBold.ttf'),
   });
 
   const imageIOpacity = useRef(new RNAnimated.Value(1)).current;
@@ -49,16 +56,15 @@ export function AuthScreen() {
     bienvenida: height * 0.54,
     login: height * 0.58,
     register: height * 0.9,
-    verify: height * 0.68,
+    verify: height * 0.64,
   };
 
-  const targetHeight = heights[vista];
   useEffect(() => {
     if (lastViewport.current.height !== height || lastViewport.current.desktop !== desktop) {
-      cardHeight.setValue(targetHeight);
+      cardHeight.setValue(heights[vista]);
       lastViewport.current = { height, desktop };
     }
-  }, [height, desktop, targetHeight, cardHeight]);
+  }, [cardHeight, desktop, height, heights, vista]);
 
   const dismissAlert = (id: string) => {
     const timeoutId = alertTimeouts.current[id];
@@ -79,9 +85,8 @@ export function AuthScreen() {
   };
 
   useEffect(() => {
-    const timeouts = alertTimeouts.current;
     return () => {
-      Object.values(timeouts).forEach(clearTimeout);
+      Object.values(alertTimeouts.current).forEach(clearTimeout);
     };
   }, []);
 
@@ -90,6 +95,7 @@ export function AuthScreen() {
       setVista(nueva);
       return;
     }
+
     RNAnimated.timing(cardHeight, {
       toValue: height * 0.15,
       duration: 300,
@@ -199,7 +205,6 @@ export function AuthScreen() {
       clearTimeout(startTimer);
     };
   }, [
-    height,
     heights.bienvenida,
     imageIOpacity,
     imageSOpacity,
@@ -251,19 +256,31 @@ export function AuthScreen() {
     return (
       <View style={webStyles.page}>
         <AuthAlertStack alerts={alerts} onDismiss={dismissAlert} />
-        <View style={webStyles.art}>
-          <a href="/" style={{ color: '#117C72', fontFamily: 'SulphurPointBold', textDecoration: 'none', fontSize: 16 }}>← Volver al inicio</a>
-          <Text style={webStyles.brand}>BIOMIND</Text>
-          <Image source={require('../../../assets/images/ingreso.png')} resizeMode="contain" style={webStyles.illustration} />
-        </View>
-        <ScrollView style={webStyles.formPane} contentContainerStyle={webStyles.formScroll}>
-          <View style={[webStyles.form, { height: vista === 'register' ? 820 : Math.max(540, height - 72) }]}>
-            {vista === 'bienvenida' && <WelcomeView onGoLogin={() => cambiarVista('login')} onGoRegister={() => cambiarVista('register')} />}
-            {vista === 'login' && <LoginForm onBack={() => cambiarVista('bienvenida')} onGoRegister={() => cambiarVista('register')} onAuthenticated={handleAuthenticated} onRequiresVerification={handleRequiresVerification} showAlert={showAlert} initialEmail={prefilledEmail} />}
-            {vista === 'register' && <RegisterForm onBack={() => cambiarVista('bienvenida')} onGoLogin={() => cambiarVista('login')} onRegistered={handleRegistered} showAlert={showAlert} />}
-            {vista === 'verify' && <VerifyEmailForm pendingVerification={pendingVerification} onBack={handleVerificationBack} onAuthenticated={handleAuthenticated} onReadyToLogin={handleReadyToLogin} showAlert={showAlert} />}
+        <View style={webStyles.shell}>
+          <View style={webStyles.art}>
+            <IngresoIllustration width="100%" height="100%" preserveAspectRatio="xMidYMid slice" />
           </View>
-        </ScrollView>
+
+          <ScrollView style={webStyles.formPane} contentContainerStyle={webStyles.formScroll}>
+            <View style={webStyles.formHeader}>
+              <a href="/" style={{ color: '#117C72', fontFamily: 'SulphurPointBold', textDecoration: 'none', fontSize: 15 }}>Volver al inicio</a>
+              <View style={webStyles.headerBrandWrap}>
+                <Image source={biomindLogo} resizeMode="contain" style={webStyles.headerLogo} />
+              </View>
+            </View>
+
+            <View style={[webStyles.form, vista === 'register' ? webStyles.registerForm : null]}>
+              {vista === 'bienvenida' && <WelcomeView onGoLogin={() => cambiarVista('login')} onGoRegister={() => cambiarVista('register')} />}
+              {vista === 'login' && <LoginForm onBack={() => cambiarVista('bienvenida')} onGoRegister={() => cambiarVista('register')} onAuthenticated={handleAuthenticated} onRequiresVerification={handleRequiresVerification} showAlert={showAlert} initialEmail={prefilledEmail} />}
+              {vista === 'register' && <RegisterForm onBack={() => cambiarVista('bienvenida')} onGoLogin={() => cambiarVista('login')} onRegistered={handleRegistered} showAlert={showAlert} />}
+              {vista === 'verify' && <VerifyEmailForm pendingVerification={pendingVerification} onBack={handleVerificationBack} onAuthenticated={handleAuthenticated} onReadyToLogin={handleReadyToLogin} showAlert={showAlert} />}
+            </View>
+
+            <View style={webStyles.formFooter}>
+              <Text style={webStyles.footerText}>Laboratorio, aprendizaje y trazabilidad para cada rol de BioMind.</Text>
+            </View>
+          </ScrollView>
+        </View>
       </View>
     );
   }
@@ -272,16 +289,12 @@ export function AuthScreen() {
     <View style={authScreenStyles.container}>
       <AuthAlertStack alerts={alerts} onDismiss={dismissAlert} />
 
-      <RNAnimated.Image
-        source={require('../../../assets/images/inicio.png')}
-        style={[authScreenStyles.imageI, { width, height: height * 0.85, opacity: imageIOpacity }]}
-        resizeMode="cover"
-      />
-      <RNAnimated.Image
-        source={require('../../../assets/images/ingreso.png')}
-        style={[authScreenStyles.imageS, { width, height: height * 0.49, opacity: imageSOpacity }]}
-        resizeMode="cover"
-      />
+      <RNAnimated.View style={[authScreenStyles.imageI, { width, height: height * 0.85, opacity: imageIOpacity }]}>
+        <InicioIllustration width="100%" height="100%" preserveAspectRatio="xMidYMid slice" />
+      </RNAnimated.View>
+      <RNAnimated.View style={[authScreenStyles.imageS, { width, height: height * 0.59, opacity: imageSOpacity }]}>
+        <IngresoIllustration width="100%" height="100%" preserveAspectRatio="xMidYMid slice" />
+      </RNAnimated.View>
       <RNAnimated.Text
         style={[
           authScreenStyles.logoText,
@@ -293,14 +306,18 @@ export function AuthScreen() {
         BIOMIND
       </RNAnimated.Text>
 
-      <RNAnimated.View
-        style={[
-          authScreenStyles.panelWrapper,
-          {
-            opacity: panelOpacity,
-            transform: [{ translateY: panelTranslateY }],
-          },
-        ]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+        style={authScreenStyles.keyboardAvoider}>
+        <RNAnimated.View
+          style={[
+            authScreenStyles.panelWrapper,
+            {
+              opacity: panelOpacity,
+              transform: [{ translateY: panelTranslateY }],
+            },
+          ]}>
         <RNAnimated.View style={[authScreenStyles.card, { height: cardHeight }]}>
           {vista === 'bienvenida' && (
             <WelcomeView
@@ -343,16 +360,60 @@ export function AuthScreen() {
           )}
         </RNAnimated.View>
       </RNAnimated.View>
+      </KeyboardAvoidingView>
     </View>
   );
 }
 
 const webStyles = StyleSheet.create({
-  page: { flex: 1, flexDirection: 'row', backgroundColor: '#FFFFFF' },
-  art: { width: '50%', backgroundColor: '#B4EFE9', paddingTop: 28, paddingHorizontal: 28, justifyContent: 'space-between', overflow: 'hidden' },
-  brand: { fontFamily: 'SulphurPointBold', fontSize: 64, letterSpacing: 4, textAlign: 'center', color: '#117C72', marginTop: 32 },
-  illustration: { width: '100%', aspectRatio: 1, flexShrink: 1, marginTop: 24, borderTopLeftRadius: 32, borderTopRightRadius: 32 },
-  formPane: { flex: 1, backgroundColor: '#FFFFFF' },
-  formScroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 36 },
-  form: { width: '100%', maxWidth: 450, minHeight: 500, paddingVertical: 24 },
+  page: { flex: 1, backgroundColor: '#F1FAF6', padding: 28 },
+  shell: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 1180,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    borderRadius: 30,
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#075D55',
+    shadowOpacity: 0.14,
+    shadowRadius: 32,
+    shadowOffset: { width: 0, height: 18 },
+  },
+  art: {
+    width: '48%',
+    minWidth: 0,
+    backgroundColor: '#D7F4EA',
+    overflow: 'hidden',
+  },
+  formPane: { flex: 1, minWidth: 0, backgroundColor: '#FBFFFD' },
+  formScroll: {
+    flexGrow: 1,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 42,
+    paddingHorizontal: 54,
+    gap: 32,
+  },
+  formHeader: {
+    width: '100%',
+    maxWidth: 500,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerBrandWrap: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  headerLogo: {
+    height: 34,
+    width: 34,
+  },
+  form: { width: '100%', maxWidth: 440, alignSelf: 'center', minHeight: 0 },
+  registerForm: { maxWidth: 500 },
+  formFooter: { width: '100%', maxWidth: 500, alignItems: 'center' },
+  footerText: { color: '#66847C', fontFamily: 'PoppinsRegular', fontSize: 14, lineHeight: 21, textAlign: 'center' },
 });

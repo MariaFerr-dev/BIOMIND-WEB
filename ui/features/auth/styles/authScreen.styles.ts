@@ -7,7 +7,7 @@ export const authScreenStyles = StyleSheet.create({
     top: 160,
     left: 0,
     width: '100%',
-    height: '85%',
+    height: '100%',
     zIndex: 1,
   },
   imageS: {
@@ -38,13 +38,18 @@ export const authScreenStyles = StyleSheet.create({
     zIndex: 10,
   },
   panelWrapper: {
-    position: 'absolute',
-    bottom: 0,
     width: '100%',
     zIndex: 2,
   },
+  keyboardAvoider: {
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    zIndex: 2,
+  },
   card: {
-    backgroundColor: '#FFF',
+    backgroundColor: '#FFFF',
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     paddingHorizontal: 28,
@@ -67,6 +72,12 @@ export const authScreenStyles = StyleSheet.create({
     color: '#117C72',
     fontFamily: 'SulphurPointBold',
   },
+  panelLogoRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'center',
+  },
   saludo: {
     textAlign: 'center',
     color: '#555',
@@ -83,7 +94,7 @@ export const authScreenStyles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#2FC4B1',
     borderRadius: 500,
-    paddingVertical: 14,
+    paddingVertical: 9,
     width: '83%',
     alignSelf: 'center',
     marginTop: 28,
@@ -94,7 +105,7 @@ export const authScreenStyles = StyleSheet.create({
   },
   buttonRegister: {
     marginTop: 16,
-    paddingVertical: 14,
+    paddingVertical: 9,
     borderRadius: 500,
     width: '75%',
     alignSelf: 'center',
@@ -111,12 +122,12 @@ export const authScreenStyles = StyleSheet.create({
     gap: 8,
   },
   buttonTextLogin: {
-    fontSize: 18,
+    fontSize: 16,
     color: '#FFF',
     fontFamily: 'SulphurPointBold',
   },
   buttonTextRegister: {
-    fontSize: 18,
+    fontSize: 16,
     color: '#2FC4B1',
     fontFamily: 'SulphurPointBold',
   },

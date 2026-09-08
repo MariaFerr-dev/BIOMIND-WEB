@@ -1,5 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { Animated as RNAnimated, Text, TouchableOpacity, View } from 'react-native';
+import { Animated as RNAnimated, Platform, Text, TouchableOpacity, View } from 'react-native';
 import { authScreenStyles } from '../styles/authScreen.styles';
 import type { WelcomeViewProps } from '../types';
 
@@ -29,12 +29,13 @@ export function WelcomeView({
           BIOMIND
         </RNAnimated.Text>
       </View>
-      <Text style={[authScreenStyles.saludo, { fontSize: 16, marginTop: 9 }]}>
-        Un espacio hecho para ti,{'\n'}donde podrás aprender,{'\n'}
-        registrar tus prácticas y crecer{'\n'}en la biotecnología vegetal.
+      <Text style={[authScreenStyles.saludo, Platform.OS === 'web' ? { fontSize: 17, lineHeight: 26, marginTop: 9 } : { fontSize: 16, marginTop: 9 }]}>
+        {Platform.OS === 'web'
+          ? 'Un espacio para aprender, registrar tus prácticas y avanzar con trazabilidad en biotecnología vegetal.'
+          : `Un espacio hecho para ti,\ndonde podrás aprender,\nregistrar tus prácticas y crecer\nen la biotecnología vegetal.`}
       </Text>
-      <Text style={[authScreenStyles.saludodos, { fontSize: 16, marginTop: 9 }]}>
-        Disfruta tu proceso y avanza{'\n'}a tu ritmo.
+      <Text style={[authScreenStyles.saludodos, Platform.OS === 'web' ? { fontSize: 16, lineHeight: 24, marginTop: 10 } : { fontSize: 16, marginTop: 9 }]}>
+        {Platform.OS === 'web' ? 'Elige cómo quieres ingresar a BioMind.' : `Disfruta tu proceso y avanza\na tu ritmo.`}
       </Text>
 
       <TouchableOpacity onPress={onGoLogin} style={authScreenStyles.buttonLogin}>

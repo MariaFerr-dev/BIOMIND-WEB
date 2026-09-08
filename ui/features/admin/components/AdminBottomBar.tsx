@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ComponentProps } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 export type BottomBarIconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
@@ -57,6 +57,42 @@ export function WorkspaceBottomBar({
   const leftTabs = tabs.slice(0, 2);
   const rightTabs = tabs.slice(2, 4);
   const isCenterActive = activeTab === centerTabId;
+  const width = useWindowDimensions().width;
+  const desktop = width >= 980;
+  const allTabs = [
+    ...leftTabs,
+    { id: centerTabId, icon: centerIcon },
+    ...rightTabs,
+  ];
+
+  if (desktop) {
+    return (
+      <View style={styles.desktopRail}>
+        <Text style={styles.desktopBrand}>BIOMIND</Text>
+        <View style={styles.desktopNav}>
+          {allTabs.map((tab) => (
+            <Pressable
+              key={tab.id}
+              accessibilityRole="button"
+              accessibilityLabel={tabLabels[tab.id] || tab.id}
+              accessibilityState={{ selected: activeTab === tab.id }}
+              onPress={() => (tab.id === centerTabId ? onCenterPress() : onTabPress(tab.id))}
+              style={[styles.desktopTab, activeTab === tab.id && { backgroundColor: `${tone.activePill}1A`, borderColor: `${tone.activePill}44` }]}
+            >
+              <MaterialCommunityIcons
+                name={tab.icon}
+                size={22}
+                color={activeTab === tab.id ? tone.activeIcon : tone.inactiveIcon}
+              />
+              <Text style={[styles.desktopTabText, { color: activeTab === tab.id ? tone.activeIcon : tone.inactiveIcon }]}>
+                {tabLabels[tab.id] || tab.id}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.wrapper, { bottom: Math.max(bottomInset, 12) - 40 }]}>
@@ -210,7 +246,50 @@ function TabButton({
   );
 }
 
+const tabLabels: Record<string, string> = { inicio: 'Inicio', usuarios: 'Usuarios', academico: 'Academico', trimestres: 'Trimestres', perfil: 'Perfil' };
+
 const styles = StyleSheet.create({
+  desktopRail: {
+    position: 'absolute',
+    left: 30,
+    top: 30,
+    bottom: 30,
+    width: 238,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E2EFEA',
+    borderWidth: 1,
+    padding: 22,
+    shadowColor: '#0B5F55',
+    shadowOpacity: 0.10,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 16 },
+    elevation: 12,
+  },
+  desktopBrand: {
+    color: '#117C72',
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: 0,
+    marginBottom: 32,
+  },
+  desktopNav: {
+    gap: 8,
+  },
+  desktopTab: {
+    minHeight: 54,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 15,
+  },
+  desktopTabText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
   wrapper: {
     position: 'absolute',
     left: 18,

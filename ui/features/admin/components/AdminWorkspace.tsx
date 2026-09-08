@@ -1,5 +1,5 @@
 ﻿import { UserAvatar } from '@/features/workspace/components/UserAvatar';
-import { type BottomBarTab, WorkspaceBottomBar } from './AdminBottomBar';
+import { type BottomBarTab, type SideSubmenuItem, WorkspaceBottomBar } from '@/features/workspace/components/WorkspaceBottomBar';
 import type { AuthenticatedSession } from '@/features/workspace/types';
 import {
   activarCompetencia,
@@ -11,11 +11,11 @@ import {
   asignarCompetenciaInstructor,
   assignInstructorToFicha,
   assignPasanteToInstructor,
-  desactivarAsignacionCompetencia,
   desactivarCompetencia,
   desactivarFicha,
   desactivarPrograma,
   desactivarResultadoAprendizaje,
+  eliminarAsignacionCompetencia,
   escucharAsignacionesCompetencias,
   escucharCompetencias,
   escucharFichas,
@@ -40,8 +40,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import type { ComponentProps, ReactNode } from 'react';
-import { Children, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Children, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type AdminTab = 'inicio' | 'usuarios' | 'academico' | 'trimestres' | 'perfil';
@@ -153,6 +153,7 @@ type AcademicTrimester = {
 
 type AcademicCompetence = {
   id: string;
+  programaId?: string;
   codigo?: string;
   nombre?: string;
   descripcion?: string;
@@ -261,6 +262,8 @@ const academicSectionOptions: { id: AcademicSectionId; label: string; icon: Admi
   { id: 'pasantes', label: 'Pasantes', icon: 'account-tie-outline' },
 ];
 
+const academicSideSubmenuItems: SideSubmenuItem[] = academicSectionOptions;
+
 type AdminWorkspaceProps = {
   session: AuthenticatedSession;
   onSignOut: () => Promise<void> | void;
@@ -268,6 +271,10 @@ type AdminWorkspaceProps = {
 
 export function AdminWorkspace({ onSignOut, session }: AdminWorkspaceProps) {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const desktop = Platform.OS === 'web' && width >= 760;
+  const workspaceScrollRef = useRef<ScrollView>(null);
+  const workspaceScrollY = useRef(0);
   const [activeTab, setActiveTab] = useState<AdminTab>('inicio');
   const [activeAcademicSection, setActiveAcademicSection] = useState<AcademicSectionId>('resumen');
   const [selectedRole, setSelectedRole] = useState('Aprendiz');
@@ -428,17 +435,20 @@ export function AdminWorkspace({ onSignOut, session }: AdminWorkspaceProps) {
     return null;
   }
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, desktop && styles.desktopSafeArea]}>
       <StatusBar style="dark" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
-        style={styles.screen}>
+        style={[styles.screen, desktop && styles.desktopScreen]}>
         <ScrollView
+          ref={workspaceScrollRef}
+          onScroll={(event) => { workspaceScrollY.current = event.nativeEvent.contentOffset.y; }}
+          scrollEventThrottle={16}
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 160 }]}>
+          contentContainerStyle={[styles.scrollContent, desktop && styles.desktopScrollContent, { paddingBottom: insets.bottom + 160 }]}>
           {activeTab === 'inicio' ? <HeaderCard session={session} /> : null}
           {activeTab === 'inicio' && <AdminHome counts={counts} onOpenNews={handleOpenAdminNews} />}
           {activeTab === 'usuarios' && (
@@ -463,7 +473,9 @@ export function AdminWorkspace({ onSignOut, session }: AdminWorkspaceProps) {
               programs={programs.length ? programs : demoPrograms}
               sheets={sheets.length ? sheets : demoAcademicSheets}
               users={adminUsers}
+              showInlineNav={!desktop}
               onAcademicSectionChange={setActiveAcademicSection}
+              onEditRequested={(windowY) => requestAnimationFrame(() => workspaceScrollRef.current?.scrollTo({ y: windowY === undefined ? 0 : Math.max(0, workspaceScrollY.current + windowY - 120), animated: true }))}
             />
           )}
           {activeTab === 'trimestres' && (
@@ -472,6 +484,7 @@ export function AdminWorkspace({ onSignOut, session }: AdminWorkspaceProps) {
               loading={academicLoading}
               sheets={sheets.length ? sheets : demoAcademicSheets}
               trimesters={trimesters.length ? trimesters : demoTrimesters}
+              onEditRequested={() => requestAnimationFrame(() => workspaceScrollRef.current?.scrollTo({ y: 320, animated: true }))}
             />
           )}
           {activeTab === 'perfil' && <ProfileTab session={session} onSignOut={onSignOut} />}
@@ -482,6 +495,15 @@ export function AdminWorkspace({ onSignOut, session }: AdminWorkspaceProps) {
           bottomInset={insets.bottom}
           centerIcon="account-cog-outline"
           centerTabId="usuarios"
+          sideSubmenu={{
+            activeId: activeAcademicSection,
+            items: academicSideSubmenuItems,
+            parentId: 'academico',
+            onPress: (sectionId) => {
+              setActiveTab('academico');
+              setActiveAcademicSection(sectionId as AcademicSectionId);
+            },
+          }}
           tabs={tabs}
           tone={bottomBarTone}
           onCenterPress={() => setActiveTab('usuarios')}
@@ -773,7 +795,9 @@ function AcademicTab({
   learningResults,
   loading,
   onAcademicSectionChange,
+  onEditRequested,
   programs,
+  showInlineNav = true,
   sheets,
   users,
 }: {
@@ -784,7 +808,9 @@ function AcademicTab({
   learningResults: LearningResult[];
   loading: boolean;
   onAcademicSectionChange: (section: AcademicSectionId) => void;
+  onEditRequested: (windowY?: number) => void;
   programs: AcademicProgram[];
+  showInlineNav?: boolean;
   sheets: AcademicSheet[];
   users: AdminUser[];
 }) {
@@ -797,27 +823,42 @@ function AcademicTab({
   const firstProgramId = activePrograms[0]?.id || '';
   const [programForm, setProgramForm] = useState({ id: '', codigo: '', nombre: '', tipoFormacion: formationTypeOptions[0], activo: true, estado: 'Activo' });
   const [sheetForm, setSheetForm] = useState({ id: '', numero: '', programaId: firstProgramId, activo: true, estado: 'Activa' });
-  const [competenceForm, setCompetenceForm] = useState({ id: '', codigo: '', nombre: '', descripcion: '' });
+  const [competenceForm, setCompetenceForm] = useState({ id: '', programaId: firstProgramId, codigo: '', nombre: '', descripcion: '' });
   const [rapForm, setRapForm] = useState({ id: '', competenciaId: '', codigo: '', descripcion: '' });
+  const [rapFormProgramId, setRapFormProgramId] = useState(firstProgramId);
   const [learnerFicha, setLearnerFicha] = useState({ learnerUid: '', fichaId: '' });
   const [instructorFicha, setInstructorFicha] = useState({ instructorUid: '', fichaId: '' });
   const [pasanteInstructor, setPasanteInstructor] = useState({ pasanteUid: '', instructorUid: '' });
-  const [competenceAssignment, setCompetenceAssignment] = useState({ instructorUid: '', fichaId: '', competenciaId: '', resultadoId: '' });
+  const [competenceAssignment, setCompetenceAssignment] = useState({ id: '', instructorUid: '', programaId: firstProgramId, fichaId: '', competenciaId: '', resultadoId: '' });
   const [summarySheetId, setSummarySheetId] = useState('');
   const [programSearch, setProgramSearch] = useState('');
   const [sheetSearch, setSheetSearch] = useState('');
   const [pasanteSearch, setPasanteSearch] = useState('');
   const [competenceSearch, setCompetenceSearch] = useState('');
   const [rapSearch, setRapSearch] = useState('');
+  const [competenceProgramFilter, setCompetenceProgramFilter] = useState('');
+  const [rapProgramFilter, setRapProgramFilter] = useState('');
+  const [rapCompetenceFilter, setRapCompetenceFilter] = useState('');
   const [assignmentSearch, setAssignmentSearch] = useState('');
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const rapFormRef = useRef<View>(null);
 
   useEffect(() => {
     if (!sheetForm.programaId && firstProgramId) {
       setSheetForm((current) => ({ ...current, programaId: firstProgramId }));
     }
-  }, [firstProgramId, sheetForm.programaId]);
+    if (!competenceForm.programaId && firstProgramId) {
+      setCompetenceForm((current) => ({ ...current, programaId: firstProgramId }));
+    }
+    if (!rapFormProgramId && firstProgramId) {
+      setRapFormProgramId(firstProgramId);
+      setRapForm((current) => ({
+        ...current,
+        competenciaId: current.competenciaId || activeCompetences.find((competence) => competence.programaId === firstProgramId)?.id || '',
+      }));
+    }
+  }, [activeCompetences, competenceForm.programaId, firstProgramId, rapFormProgramId, sheetForm.programaId]);
 
   useEffect(() => {
     const firstInstructorId = instructors[0]?.id || '';
@@ -849,13 +890,18 @@ function AcademicTab({
       return next.pasanteUid === current.pasanteUid && next.instructorUid === current.instructorUid ? current : next;
     });
     setCompetenceAssignment((current) => {
+      const programId = current.programaId || firstProgramId;
+      const programCompetenceId = activeCompetences.find((item) => item.programaId === programId)?.id || '';
       const next = {
+        id: current.id,
         instructorUid: current.instructorUid || firstInstructorId,
-        fichaId: current.fichaId || firstSheetId,
-        competenciaId: current.competenciaId || firstCompetenceId,
+        programaId: programId,
+        fichaId: current.fichaId || activeSheets.find((sheet) => sheet.programaId === programId)?.id || firstSheetId,
+        competenciaId: current.competenciaId || programCompetenceId || firstCompetenceId,
         resultadoId: current.resultadoId || firstRapId,
       };
       return next.instructorUid === current.instructorUid
+        && next.programaId === current.programaId
         && next.fichaId === current.fichaId
         && next.competenciaId === current.competenciaId
         && next.resultadoId === current.resultadoId ? current : next;
@@ -887,10 +933,14 @@ function AcademicTab({
     const instructor = instructors.find((user) => user.id === pasante.instructorUid);
     return `${pasante.nombre || ''} ${pasante.correo || ''} ${instructor?.nombre || ''} ${instructor?.correo || ''}`;
   }).sort((a, b) => String(a.nombre || a.correo || '').localeCompare(String(b.nombre || b.correo || ''), 'es', { sensitivity: 'base' }));
-  const filteredCompetences = filterByText(competences, competenceSearch, (competence) =>
+  const filteredCompetences = filterByText(competences.filter((competence) => !competenceProgramFilter || competence.programaId === competenceProgramFilter), competenceSearch, (competence) =>
     `${competence.codigo || ''} ${competence.nombre || ''} ${competence.descripcion || ''} ${competence.estado || ''}`
   ).sort((a, b) => String(a.codigo || a.nombre || '').localeCompare(String(b.codigo || b.nombre || ''), 'es', { numeric: true, sensitivity: 'base' }));
-  const filteredLearningResults = filterByText(learningResults, rapSearch, (rap) => {
+  const filteredLearningResults = filterByText(learningResults.filter((rap) => {
+    const competence = competences.find((item) => item.id === rap.competenciaId);
+    return (!rapProgramFilter || competence?.programaId === rapProgramFilter)
+      && (!rapCompetenceFilter || rap.competenciaId === rapCompetenceFilter);
+  }), rapSearch, (rap) => {
     const competence = competences.find((item) => item.id === rap.competenciaId);
     return `${rap.codigo || ''} ${rap.descripcion || ''} ${competence?.codigo || ''} ${competence?.nombre || ''} ${rap.estado || ''}`;
   }).sort((a, b) => String(a.codigo || '').localeCompare(String(b.codigo || ''), 'es', { numeric: true, sensitivity: 'base' }));
@@ -904,6 +954,10 @@ function AcademicTab({
   const assignableRaps = learningResults.filter((rap) =>
     rap.competenciaId === competenceAssignment.competenciaId && isActiveRecord(rap)
   );
+  const assignmentCompetences = activeCompetences.filter((competence) => competence.programaId === competenceAssignment.programaId);
+  const assignmentSheets = activeSheets.filter((sheet) => sheet.programaId === competenceAssignment.programaId);
+  const rapFilterCompetences = activeCompetences.filter((competence) => !rapProgramFilter || competence.programaId === rapProgramFilter);
+  const rapFormCompetences = activeCompetences.filter((competence) => competence.programaId === rapFormProgramId);
 
   const runAcademicAction = async (action: () => Promise<void>, successMessage: string) => {
     setSaving(true);
@@ -917,6 +971,35 @@ function AcademicTab({
     } finally {
       setSaving(false);
     }
+  };
+
+  const editCompetenceAssignment = (assignment: CompetenceAssignment) => {
+    const competence = competences.find((item) => item.id === assignment.competenciaId);
+    const sheet = sheets.find((item) => item.id === assignment.fichaId);
+    setCompetenceAssignment({
+      id: assignment.id,
+      instructorUid: assignment.instructorUid || '',
+      programaId: competence?.programaId || sheet?.programaId || firstProgramId,
+      fichaId: assignment.fichaId || '',
+      competenciaId: assignment.competenciaId || '',
+      resultadoId: assignment.resultadoId || assignment.resultadoIds?.[0] || '',
+    });
+    setFeedback('Editando asignación de RAP.');
+    onEditRequested();
+  };
+
+  const deleteCompetenceAssignment = (assignment: CompetenceAssignment) => {
+    Alert.alert('Eliminar asignación', '¿Seguro que deseas eliminar esta asignación de RAP?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar',
+        style: 'destructive',
+        onPress: () => runAcademicAction(
+          () => eliminarAsignacionCompetencia(assignment.id),
+          'Asignación de RAP eliminada.'
+        ),
+      },
+    ]);
   };
 
   const submitProgram = async () => {
@@ -980,7 +1063,7 @@ function AcademicTab({
         subtitle="Gestión de fichas, asignaciones, competencias, RAP, proyectos y grupos"
         title="Académico"
       />
-      <AcademicSectionNav activeSection={activeAcademicSection} onChange={onAcademicSectionChange} />
+      {showInlineNav ? <AcademicSectionNav activeSection={activeAcademicSection} onChange={onAcademicSectionChange} /> : null}
 
       {activeAcademicSection === 'programas' ? (
         <Section title="Programas" subtitle="Crear, listar, editar y desactivar programas">
@@ -1012,14 +1095,14 @@ function AcademicTab({
                 program={program}
                 onActivate={() => activarPrograma(program.id)}
                 onDeactivate={() => desactivarPrograma(program.id)}
-                onEdit={() => setProgramForm({
+                onEdit={() => { setProgramForm({
                   id: program.id,
                   codigo: program.codigo || '',
                   nombre: program.nombre || '',
                   tipoFormacion: program.tipoFormacion || formationTypeOptions[0],
                   activo: program.activo !== false,
                   estado: program.estado || (program.activo === false ? 'Inactivo' : 'Activo'),
-                })}
+                }); onEditRequested(); }}
               />
             ))}
           </ScrollableAdminList>
@@ -1039,6 +1122,8 @@ function AcademicTab({
             />
             <OptionPicker
               emptyLabel="Primero crea un programa"
+              fieldStyle
+              label="Programa"
               options={activePrograms.map((program) => ({ label: `${program.codigo || 'Programa'} - ${program.nombre || ''}`, value: program.id }))}
               value={sheetForm.programaId}
               onChange={(programaId) => setSheetForm((current) => ({ ...current, programaId }))}
@@ -1059,13 +1144,13 @@ function AcademicTab({
                 sheet={sheet}
                 onActivate={() => activarFicha(sheet.id)}
                 onDeactivate={() => desactivarFicha(sheet.id)}
-                onEdit={() => setSheetForm({
+                onEdit={() => { setSheetForm({
                   id: sheet.id,
                   numero: sheet.numero || '',
                   programaId: sheet.programaId || activePrograms[0]?.id || '',
                   activo: sheet.activo !== false,
                   estado: sheet.estado || (sheet.activo === false ? 'Inactiva' : 'Activa'),
-                })}
+                }); onEditRequested(); }}
               />
             ))}
           </ScrollableAdminList>
@@ -1262,6 +1347,14 @@ function AcademicTab({
       {activeAcademicSection === 'competencias' ? (
         <Section title="Competencias y RAP" subtitle="El instructor solo puede recibir competencias que ya tengan resultados">
           <View style={styles.formCard}>
+            <OptionPicker
+              emptyLabel="Primero crea un programa"
+              fieldStyle
+              label="Programa"
+              options={activePrograms.map((program) => ({ label: `${program.codigo || 'Programa'} - ${program.nombre || ''}`, value: program.id }))}
+              value={competenceForm.programaId}
+              onChange={(programaId) => setCompetenceForm((current) => ({ ...current, programaId }))}
+            />
             <AdminField label="Código competencia" value={competenceForm.codigo} onChangeText={(codigo) => setCompetenceForm((current) => ({ ...current, codigo }))} />
             <AdminField label="Nombre competencia" value={competenceForm.nombre} onChangeText={(nombre) => setCompetenceForm((current) => ({ ...current, nombre }))} />
             <AdminField label="Descripción" value={competenceForm.descripcion} onChangeText={(descripcion) => setCompetenceForm((current) => ({ ...current, descripcion }))} />
@@ -1269,11 +1362,22 @@ function AcademicTab({
               disabled={saving}
               onPress={() => runAcademicAction(async () => {
                 await guardarCompetencia(competenceForm);
-                setCompetenceForm({ id: '', codigo: '', nombre: '', descripcion: '' });
+                setCompetenceForm({ id: '', programaId: competenceForm.programaId || firstProgramId, codigo: '', nombre: '', descripcion: '' });
               }, 'Competencia guardada correctamente.')}
               style={[styles.formButton, saving && styles.smallButtonDisabled]}>
               <Text style={styles.formButtonText}>{competenceForm.id ? 'Actualizar competencia' : 'Crear competencia'}</Text>
             </Pressable>
+          </View>
+          <View style={styles.formCard}>
+            <Text style={styles.formHint}>Filtrar competencias</Text>
+            <OptionPicker
+              emptyLabel="No hay programas"
+              fieldStyle
+              label="Programa"
+              options={[{ label: 'Todos los programas', value: '' }, ...activePrograms.map((program) => ({ label: `${program.codigo || 'Programa'} - ${program.nombre || ''}`, value: program.id }))]}
+              value={competenceProgramFilter}
+              onChange={setCompetenceProgramFilter}
+            />
           </View>
           <ScrollableAdminList
             emptyText="No encontramos competencias con esa búsqueda."
@@ -1284,28 +1388,42 @@ function AcademicTab({
               <SimpleAdminCard
                 key={competence.id}
                 title={`${competence.codigo || 'COMP'} - ${competence.nombre || 'Competencia'}`}
-                subtitle={competence.descripcion || 'Sin descripción'}
+                subtitle={`${activePrograms.find((program) => program.id === competence.programaId)?.nombre || 'Sin programa'} · Descripción: ${competence.descripcion || 'Sin descripción'}`}
                 inactive={!isActiveRecord(competence)}
                 onActivate={() => activarCompetencia(competence.id)}
                 onDeactivate={() => desactivarCompetencia(competence.id)}
-                onEdit={() => setCompetenceForm({
+                onEdit={() => { setCompetenceForm({
                   id: competence.id,
+                  programaId: competence.programaId || firstProgramId,
                   codigo: competence.codigo || '',
                   nombre: competence.nombre || '',
                   descripcion: competence.descripcion || '',
-                })}
+                }); onEditRequested(); }}
               />
             ))}
           </ScrollableAdminList>
 
-          <View style={styles.formCard}>
+          <View ref={rapFormRef} style={styles.formCard}>
             <View style={styles.rapFormHeader}>
               <Text style={styles.rapFormEyebrow}>Formulario independiente</Text>
               <Text style={styles.rapFormTitle}>Resultado de aprendizaje</Text>
             </View>
             <OptionPicker
+              emptyLabel="Primero crea un programa"
+              fieldStyle
+              label="Programa"
+              options={activePrograms.map((program) => ({ label: `${program.codigo || 'Programa'} - ${program.nombre || ''}`, value: program.id }))}
+              value={rapFormProgramId}
+              onChange={(programaId) => {
+                setRapFormProgramId(programaId);
+                setRapForm((current) => ({ ...current, competenciaId: activeCompetences.find((competence) => competence.programaId === programaId)?.id || '' }));
+              }}
+            />
+            <OptionPicker
               emptyLabel="Primero crea una competencia"
-              options={competences.map((competence) => ({ label: `${competence.codigo || 'COMP'} - ${competence.nombre || ''}`, value: competence.id }))}
+              fieldStyle
+              label="Competencia"
+              options={rapFormCompetences.map((competence) => ({ label: `${competence.codigo || 'COMP'} - ${competence.nombre || ''}`, value: competence.id }))}
               value={rapForm.competenciaId}
               onChange={(competenciaId) => setRapForm((current) => ({ ...current, competenciaId }))}
             />
@@ -1320,6 +1438,25 @@ function AcademicTab({
               style={[styles.formButton, saving && styles.smallButtonDisabled]}>
               <Text style={styles.formButtonText}>{rapForm.id ? 'Actualizar RAP' : 'Crear RAP'}</Text>
             </Pressable>
+          </View>
+          <View style={styles.formCard}>
+            <Text style={styles.formHint}>Filtrar resultados de aprendizaje</Text>
+            <OptionPicker
+              emptyLabel="No hay programas"
+              fieldStyle
+              label="Programa"
+              options={[{ label: 'Todos los programas', value: '' }, ...activePrograms.map((program) => ({ label: `${program.codigo || 'Programa'} - ${program.nombre || ''}`, value: program.id }))]}
+              value={rapProgramFilter}
+              onChange={(programaId) => { setRapProgramFilter(programaId); setRapCompetenceFilter(''); }}
+            />
+            <OptionPicker
+              emptyLabel="No hay competencias para este programa"
+              fieldStyle
+              label="Competencia"
+              options={[{ label: 'Todas las competencias', value: '' }, ...rapFilterCompetences.map((competence) => ({ label: `${competence.codigo || 'COMP'} - ${competence.nombre || ''}`, value: competence.id }))]}
+              value={rapCompetenceFilter}
+              onChange={setRapCompetenceFilter}
+            />
           </View>
           <ScrollableAdminList
             emptyText="No encontramos RAP con esa búsqueda."
@@ -1336,12 +1473,12 @@ function AcademicTab({
                   inactive={!isActiveRecord(rap)}
                   onActivate={() => activarResultadoAprendizaje(rap.id)}
                   onDeactivate={() => desactivarResultadoAprendizaje(rap.id)}
-                  onEdit={() => setRapForm({
+                  onEdit={() => { setRapForm({
                     id: rap.id,
                     competenciaId: rap.competenciaId || activeCompetences[0].id || '',
                     codigo: rap.codigo || '',
                     descripcion: rap.descripcion || '',
-                  })}
+                  }); setRapFormProgramId(competence?.programaId || firstProgramId); requestAnimationFrame(() => rapFormRef.current?.measureInWindow((_x, y) => onEditRequested(y))); }}
                 />
               );
             })}
@@ -1359,24 +1496,36 @@ function AcademicTab({
               value={competenceAssignment.instructorUid}
               onChange={(instructorUid) => setCompetenceAssignment((current) => ({ ...current, instructorUid }))}
             />
-            <AssignmentStep number="2" text="Selecciona la ficha" />
+            <AssignmentStep number="2" text="Selecciona el programa" />
             <OptionPicker
-              emptyLabel="Primero crea una ficha"
-              options={activeSheets.map((sheet) => ({ label: `Ficha ${sheet.numero} - ${sheet.programaNombre || 'Sin programa'}`, value: sheet.id }))}
-              value={competenceAssignment.fichaId}
-              onChange={(fichaId) => setCompetenceAssignment((current) => ({ ...current, fichaId }))}
+              emptyLabel="Primero crea un programa"
+              options={activePrograms.map((program) => ({ label: `${program.codigo || 'Programa'} - ${program.nombre || ''}`, value: program.id }))}
+              value={competenceAssignment.programaId}
+              onChange={(programaId) => {
+                const competenciaId = activeCompetences.find((item) => item.programaId === programaId)?.id || '';
+                const fichaId = activeSheets.find((item) => item.programaId === programaId)?.id || '';
+                const resultadoId = learningResults.find((rap) => rap.competenciaId === competenciaId && isActiveRecord(rap))?.id || '';
+                setCompetenceAssignment((current) => ({ ...current, programaId, competenciaId, fichaId, resultadoId }));
+              }}
             />
-            <AssignmentStep number="3" text="Selecciona la competencia" />
+            <AssignmentStep number="3" text="Selecciona la competencia del programa" />
             <OptionPicker
-              emptyLabel="Primero crea una competencia"
-              options={activeCompetences.map((competence) => ({ label: `${competence.codigo || 'COMP'} - ${competence.nombre || ''}`, value: competence.id }))}
+              emptyLabel="Este programa no tiene competencias"
+              options={assignmentCompetences.map((competence) => ({ label: `${competence.codigo || 'COMP'} - ${competence.nombre || ''}`, value: competence.id }))}
               value={competenceAssignment.competenciaId}
               onChange={(competenciaId) => {
                 const nextRapId = learningResults.find((rap) => rap.competenciaId === competenciaId && isActiveRecord(rap))?.id || '';
                 setCompetenceAssignment((current) => ({ ...current, competenciaId, resultadoId: nextRapId }));
               }}
             />
-            <AssignmentStep number="4" text="Selecciona el RAP específico" />
+            <AssignmentStep number="4" text="Selecciona la ficha del programa" />
+            <OptionPicker
+              emptyLabel="Este programa no tiene fichas"
+              options={assignmentSheets.map((sheet) => ({ label: `Ficha ${sheet.numero} - ${sheet.programaNombre || 'Sin programa'}`, value: sheet.id }))}
+              value={competenceAssignment.fichaId}
+              onChange={(fichaId) => setCompetenceAssignment((current) => ({ ...current, fichaId }))}
+            />
+            <AssignmentStep number="5" text="Selecciona el RAP específico" />
             <OptionPicker
               emptyLabel="Esta competencia no tiene RAP activos"
               options={assignableRaps.map((rap) => ({ label: `${rap.codigo || 'RAP'} - ${rap.descripcion || ''}`, value: rap.id }))}
@@ -1389,11 +1538,14 @@ function AcademicTab({
             <Pressable
               disabled={saving || !competenceAssignment.resultadoId}
               onPress={() => runAcademicAction(
-                () => asignarCompetenciaInstructor(competenceAssignment),
-                'RAP asignado al instructor para la ficha.'
+                async () => {
+                  await asignarCompetenciaInstructor(competenceAssignment);
+                  setCompetenceAssignment((current) => ({ ...current, id: '' }));
+                },
+                competenceAssignment.id ? 'Asignación de RAP actualizada.' : 'RAP asignado al instructor para la ficha.'
               )}
               style={[styles.formButton, (saving || !competenceAssignment.resultadoId) && styles.smallButtonDisabled]}>
-              <Text style={styles.formButtonText}>Asignar RAP</Text>
+              <Text style={styles.formButtonText}>{competenceAssignment.id ? 'Actualizar asignación' : 'Asignar RAP'}</Text>
             </Pressable>
           </View>
           <ScrollableAdminList
@@ -1412,11 +1564,8 @@ function AcademicTab({
                   key={assignment.id}
                   title={`${rap?.codigo || 'RAP'} - ${rap?.descripcion || 'Resultado de aprendizaje'}`}
                   subtitle={`${competence?.codigo || 'COMP'} - ${competence?.nombre || 'Competencia'} / ${instructor?.nombre || 'Instructor'} / Ficha ${sheet?.numero || 'sin ficha'}`}
-                  inactive={!isActiveRecord(assignment)}
-                  onDeactivate={isActiveRecord(assignment) ? () => runAcademicAction(
-                    () => desactivarAsignacionCompetencia(assignment.id),
-                    'Asignación de competencia retirada.'
-                  ) : undefined}
+                  onEdit={() => editCompetenceAssignment(assignment)}
+                  onDelete={() => deleteCompetenceAssignment(assignment)}
                 />
               );
             })}
@@ -1432,25 +1581,17 @@ function TrimesterTab({
   loading,
   sheets,
   trimesters,
+  onEditRequested,
 }: {
   error: string;
   loading: boolean;
   sheets: AcademicSheet[];
   trimesters: AcademicTrimester[];
+  onEditRequested: () => void;
 }) {
   const activeSheets = sheets.filter(isActiveRecord);
   const activeTrimesters = trimesters.filter(isActiveRecord);
-  const firstTrimesterId = activeTrimesters[0]?.id || '';
-  const [assignmentScrollRequest, setAssignmentScrollRequest] = useState(0);
-
-  useEffect(() => {
-    if (!assignmentScrollRequest || typeof document === 'undefined') return;
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    document.getElementById('trimester-assignment-form')?.scrollIntoView({
-      behavior: reduceMotion ? 'auto' : 'smooth',
-      block: 'start',
-    });
-  }, [assignmentScrollRequest]);
+  const firstTrimesterId = activeTrimesters[0].id || '';
   const [sheetSearch, setSheetSearch] = useState('');
   const [dateForm, setDateForm] = useState({ id: '', fechaInicio: '', fechaFin: '' });
   const [form, setForm] = useState({
@@ -1556,7 +1697,7 @@ function TrimesterTab({
       fichaIds: [sheet.id],
     });
     setFeedback(`Editando trimestre de la ficha ${sheet.numero || sheet.id}.`);
-    setAssignmentScrollRequest((current) => current + 1);
+    onEditRequested();
   };
 
   const removeSheetTrimester = async (sheet: AcademicSheet) => {
@@ -1595,7 +1736,7 @@ function TrimesterTab({
         </View>
       </Section>
 
-      <Section nativeID="trimester-assignment-form" title="Asignar trimestre a fichas" subtitle="Selecciona una fecha creada, define el número y elige una o varias fichas">
+      <Section title="Asignar trimestre a fichas" subtitle="Selecciona una fecha creada, define el número y elige una o varias fichas">
         <View style={styles.formCard}>
           <AssignmentStep number="1" text="Selecciona una fecha creada" />
           <OptionPicker
@@ -1673,6 +1814,8 @@ function TrimesterTab({
   );
 }
 function ProfileTab({ onSignOut, session }: AdminWorkspaceProps) {
+  const { width } = useWindowDimensions();
+  const desktop = Platform.OS === 'web' && width >= 760;
   const [name, setName] = useState(session.name);
   const [email, setEmail] = useState(session.email);
   const [photoUri, setPhotoUri] = useState(session.photoUrl || '');
@@ -1756,34 +1899,45 @@ function ProfileTab({ onSignOut, session }: AdminWorkspaceProps) {
 
   return (
     <>
-      <View style={styles.adminProfileCard}>
-        <Pressable onPress={pickProfilePhoto} style={styles.adminAvatarWrap}>
-          <UserAvatar name={name} photoUrl={photoUri || session.photoUrl} size={100} />
-          <View style={styles.changePhotoButton}>
-            <Text style={styles.changePhotoText}>Cambiar foto</Text>
+      <PageTitle
+        icon="account-circle-outline"
+        subtitle="Actualiza tus datos de acceso y la imagen visible en BioMind"
+        title="Perfil"
+      />
+
+      <View style={[styles.adminProfileCard, desktop && styles.adminProfileCardDesktop]}>
+        <View style={[styles.adminProfileMain, desktop && styles.adminProfileMainDesktop]}>
+          <Pressable onPress={pickProfilePhoto} style={[styles.adminAvatarWrap, desktop && styles.adminAvatarWrapDesktop]}>
+            <UserAvatar name={name} photoUrl={photoUri || session.photoUrl} size={desktop ? 118 : 100} />
+            <View style={styles.changePhotoButton}>
+              <Text style={styles.changePhotoText}>Cambiar foto</Text>
+            </View>
+            <Text style={styles.profileRoleText}>{session.role}</Text>
+          </Pressable>
+
+          <View style={styles.adminProfileFormPanel}>
+            <View style={styles.adminForm}>
+              <ProfileField label="Nombre" value={name} onChangeText={setName} />
+              <ProfileField label="Correo" value={email} onChangeText={setEmail} />
+              <ProfileField label="Rol" value={session.role} editable={false} />
+            </View>
+
+            <View style={styles.profileButtonRow}>
+              <Pressable disabled={saving} style={[styles.saveProfileButton, saving && styles.smallButtonDisabled]} onPress={handleSaveProfile}>
+                {saving ? (
+                  <ActivityIndicator color={palette.surface} />
+                ) : (
+                  <Text style={styles.saveProfileText}>Guardar perfil</Text>
+                )}
+              </Pressable>
+              <Pressable onPress={onSignOut} style={styles.signOutButton}>
+                <Text style={styles.signOutText}>Cerrar sesión</Text>
+              </Pressable>
+            </View>
+
+            {feedback ? <Text style={styles.profileFeedbackText}>{feedback}</Text> : null}
           </View>
-        </Pressable>
-
-        <View style={styles.adminForm}>
-          <ProfileField label="Nombre" value={name} onChangeText={setName} />
-          <ProfileField label="Correo" value={email} onChangeText={setEmail} />
-          <ProfileField label="Rol" value={session.role} editable={false} />
         </View>
-
-        <View style={styles.profileButtonRow}>
-          <Pressable disabled={saving} style={[styles.saveProfileButton, saving && styles.smallButtonDisabled]} onPress={handleSaveProfile}>
-            {saving ? (
-              <ActivityIndicator color={palette.surface} />
-            ) : (
-              <Text style={styles.saveProfileText}>Guardar perfil</Text>
-            )}
-          </Pressable>
-          <Pressable onPress={onSignOut} style={styles.signOutButton}>
-            <Text style={styles.signOutText}>Cerrar sesión</Text>
-          </Pressable>
-        </View>
-
-        {feedback ? <Text style={styles.profileFeedbackText}>{feedback}</Text> : null}
       </View>
     </>
   );
@@ -2327,6 +2481,7 @@ function SimpleAdminCard({
   inactive = false,
   onActivate,
   onDeactivate,
+  onDelete,
   onEdit,
   subtitle,
   title,
@@ -2335,6 +2490,7 @@ function SimpleAdminCard({
   inactive?: boolean;
   onActivate?: () => void;
   onDeactivate?: () => void;
+  onDelete?: () => void;
   onEdit?: () => void;
   subtitle: string;
   title: string;
@@ -2349,7 +2505,7 @@ function SimpleAdminCard({
         </View>
         {onActivate || onDeactivate ? <StatusPill label={inactive ? 'Inactivo' : 'Activo'} tone={inactive ? 'danger' : 'success'} /> : null}
       </View>
-      {onActivate || onDeactivate || onEdit ? (
+      {onActivate || onDeactivate || onDelete || onEdit ? (
         <View style={styles.cardActions}>
           {onEdit ? (
             <Pressable onPress={onEdit} style={styles.ghostButton}>
@@ -2367,6 +2523,12 @@ function SimpleAdminCard({
             <Pressable onPress={onDeactivate} style={styles.dangerButton}>
               <MaterialCommunityIcons name="cancel" size={16} color={palette.danger} />
               <Text style={styles.dangerButtonText}>Desactivar</Text>
+            </Pressable>
+          ) : null}
+          {onDelete ? (
+            <Pressable onPress={onDelete} style={styles.dangerButton}>
+              <MaterialCommunityIcons name="trash-can-outline" size={16} color={palette.danger} />
+              <Text style={styles.dangerButtonText}>Eliminar</Text>
             </Pressable>
           ) : null}
         </View>
@@ -2390,9 +2552,9 @@ function ScrollableAdminList({
 }) {
   const items = Children.toArray(children)
     .filter(Boolean)
-    .map((child, index) =>
+    .map((child) =>
       typeof child === 'string' || typeof child === 'number'
-        ? <Text key={index} style={styles.cardText}>{child}</Text>
+        ? <Text style={styles.cardText}>{child}</Text>
         : child
     );
 
@@ -2658,11 +2820,15 @@ function getMonthLabel(date: Date) {
 
 function OptionPicker({
   emptyLabel,
+  fieldStyle = false,
+  label,
   onChange,
   options,
   value,
 }: {
   emptyLabel: string;
+  fieldStyle?: boolean;
+  label?: string;
   onChange: (value: string) => void;
   options: { label: string; value: string }[];
   value: string;
@@ -2683,8 +2849,9 @@ function OptionPicker({
   }
 
   return (
-    <View style={styles.optionSelect}>
-      <Pressable onPress={() => setOpen((current) => !current)} style={styles.optionSelectButton}>
+    <View style={[styles.optionSelect, fieldStyle && styles.adminField]}>
+      {label ? <Text style={styles.profileFieldLabel}>{label}</Text> : null}
+      <Pressable onPress={() => setOpen((current) => !current)} style={[styles.optionSelectButton, fieldStyle && styles.optionSelectButtonField]}>
         <Text style={[styles.optionSelectText, !selectedOption && styles.optionSelectPlaceholder]}>
           {selectedOption?.label || 'Seleccionar opcion'}
         </Text>
@@ -2705,7 +2872,8 @@ function OptionPicker({
             />
           </View>
 
-          {filteredOptions.length ? filteredOptions.map((option, index) => (
+          {filteredOptions.length ? <ScrollView nestedScrollEnabled style={styles.optionDropdownScroll} contentContainerStyle={styles.optionDropdownContent}>
+            {filteredOptions.map((option, index) => (
             <Pressable
               key={`${option.value}-${option.label}-${index}`}
               onPress={() => {
@@ -2721,7 +2889,8 @@ function OptionPicker({
                 {index + 1}. {option.label}
               </Text>
             </Pressable>
-          )) : <Text style={styles.optionEmptyText}>No hay resultados para esa búsqueda.</Text>}
+            ))}
+          </ScrollView> : <Text style={styles.optionEmptyText}>No hay resultados para esa búsqueda.</Text>}
         </View>
       ) : null}
     </View>
@@ -2799,7 +2968,15 @@ function PageTitle({ icon, subtitle, title }: { icon: AdminIconName; subtitle: s
   return (
     <View style={styles.pageWrap}>
       <View style={styles.pageTitle}>
-        <Text style={styles.pageLabel}>{title === 'Usuarios' ? 'GESTIÓN DE USUARIOS' : title === 'Académico' ? 'GESTIÓN ACADÉMICA' : 'GESTIÓN DE TRIMESTRES'}</Text>
+        <Text style={styles.pageLabel}>
+          {title === 'Usuarios'
+            ? 'GESTIÓN DE USUARIOS'
+            : title === 'Académico'
+              ? 'GESTIÓN ACADÉMICA'
+              : title === 'Perfil'
+                ? 'PERFIL DEL ADMINISTRADOR'
+                : 'GESTIÓN DE TRIMESTRES'}
+        </Text>
         <Text style={styles.pageMainTitle}>{title}</Text>
         <Text style={styles.sectionSubtitle}>{subtitle}</Text>
       </View>
@@ -2807,15 +2984,15 @@ function PageTitle({ icon, subtitle, title }: { icon: AdminIconName; subtitle: s
   );
 }
 
-function Section({ children, subtitle, title, nativeID }: { children: ReactNode; subtitle: string; title: string; nativeID?: string }) {
-  const safeChildren = Children.toArray(children).map((child, index) =>
+function Section({ children, subtitle, title }: { children: ReactNode; subtitle: string; title: string }) {
+  const safeChildren = Children.toArray(children).map((child) =>
     typeof child === 'string' || typeof child === 'number'
-      ? <Text key={index} style={styles.cardText}>{child}</Text>
+      ? <Text style={styles.cardText}>{child}</Text>
       : child
   );
 
   return (
-    <View nativeID={nativeID} style={styles.sectionBlock}>
+    <View style={styles.sectionBlock}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>{title}</Text>
         <Text style={styles.sectionSubtitle}>{subtitle}</Text>
@@ -2880,17 +3057,31 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: palette.background,
   },
+  desktopSafeArea: {
+    backgroundColor: palette.surface,
+  },
   screen: {
     flex: 1,
     backgroundColor: palette.background,
     paddingHorizontal: 3,
   },
+  desktopScreen: {
+    backgroundColor: palette.surface,
+    paddingLeft: 300,
+    paddingRight: 44,
+  },
   scrollContent: {
     gap: 4,
     paddingHorizontal: 20,
   },
+  desktopScrollContent: {
+    alignSelf: 'center',
+    maxWidth: 1280,
+    paddingTop: 38,
+    width: '100%',
+  },
   headerCard: {
-    backgroundColor: palette.background,
+    backgroundColor: palette.surface,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
     marginHorizontal: -20,
@@ -2988,11 +3179,12 @@ const styles = StyleSheet.create({
     lineHeight: 13,
   },
   sectionBlock: {
-    backgroundColor: '#F8F6F1',
+    backgroundColor: '#FCFAF6',
+    borderRadius: 24,
     gap: 16,
-    marginHorizontal: -20,
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+    marginTop: 14,
+    paddingHorizontal: 24,
+    paddingVertical: 24,
   },
   sectionHeader: {
     gap: 2,
@@ -3524,10 +3716,11 @@ const styles = StyleSheet.create({
   },
   formCard: {
     backgroundColor: palette.surface,
-    borderRadius: 18,
-    gap: 12,
-    marginHorizontal: -20,
-    padding: 28,
+    borderColor: '#F0E7D8',
+    borderRadius: 22,
+    borderWidth: 1,
+    gap: 14,
+    padding: 24,
   },
   formHint: {
     color: palette.primary,
@@ -3597,11 +3790,11 @@ const styles = StyleSheet.create({
   formButton: {
     alignItems: 'center',
     backgroundColor: palette.primary,
-    borderRadius: 999,
+    borderRadius: 10,
     justifyContent: 'center',
-    minHeight: 42,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
+    minHeight: 38,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
   },
   formButtonText: {
     color: palette.surface,
@@ -3611,14 +3804,14 @@ const styles = StyleSheet.create({
   dateInputButton: {
     alignItems: 'center',
     backgroundColor: palette.surface,
-    borderColor: '#CFCFCF',
-    borderRadius: 999,
+    borderColor: '#D8D0C2',
+    borderRadius: 10,
     borderWidth: 1,
     flexDirection: 'row',
     gap: 8,
     minHeight: 38,
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 7,
   },
   dateInputText: {
     color: palette.ink,
@@ -3699,13 +3892,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: palette.soft,
     borderColor: palette.border,
-    borderRadius: 14,
+    borderRadius: 10,
     borderWidth: 1,
     flexDirection: 'row',
     gap: 10,
     minHeight: 38,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 7,
+  },
+  optionSelectButtonField: {
+    backgroundColor: '#fbfbfb',
+    borderColor: '#D8D0C2',
+    borderRadius: 10,
+    minHeight: 38,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    shadowColor: palette.ink,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
   },
   optionSelectText: {
     color: palette.ink,
@@ -3726,14 +3931,22 @@ const styles = StyleSheet.create({
     maxHeight: 320,
     padding: 10,
   },
+  optionDropdownScroll: {
+    flexGrow: 0,
+    maxHeight: 230,
+  },
+  optionDropdownContent: {
+    gap: 8,
+    paddingBottom: 2,
+  },
   optionSearchBox: {
     alignItems: 'center',
     backgroundColor: palette.soft,
-    borderRadius: 14,
+    borderRadius: 10,
     flexDirection: 'row',
     gap: 8,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   optionSearchInput: {
     color: palette.ink,
@@ -3813,12 +4026,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: palette.surface,
     borderColor: palette.border,
-    borderRadius: 14,
+    borderRadius: 10,
     borderWidth: 1,
     flexDirection: 'row',
     gap: 8,
+    minHeight: 38,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 7,
   },
   searchInput: {
     color: palette.ink,
@@ -4092,17 +4306,28 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   adminProfileCard: {
-    backgroundColor: palette.surface,
-    elevation: 3,
-    gap: 8,
-    marginHorizontal: -30,
-    paddingHorizontal: 40,
-    paddingTop: 30,
-    paddingVertical: 20,
-    shadowColor: palette.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    borderRadius: 0,
+    borderWidth: 0,
+    elevation: 0,
+    gap: 18,
+    padding: 0,
+    shadowOpacity: 0,
+  },
+  adminProfileCardDesktop: {
+    alignSelf: 'stretch',
+    maxWidth: '100%',
+    paddingTop: 18,
+    width: '100%',
+  },
+  adminProfileMain: {
+    gap: 22,
+  },
+  adminProfileMainDesktop: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 48,
   },
   profileShell: {
     backgroundColor: palette.surface,
@@ -4134,6 +4359,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
+  adminAvatarWrapDesktop: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    borderRadius: 0,
+    borderWidth: 0,
+    justifyContent: 'flex-start',
+    minHeight: 0,
+    paddingHorizontal: 0,
+    paddingTop: 18,
+    width: 240,
+  },
   changePhotoButton: {
     backgroundColor: palette.soft,
     borderRadius: 999,
@@ -4145,9 +4382,19 @@ const styles = StyleSheet.create({
     fontFamily: 'PoppinsSemiBold',
     fontSize: 12,
   },
+  profileRoleText: {
+    color: palette.muted,
+    fontFamily: 'PoppinsMedium',
+    fontSize: 12,
+  },
+  adminProfileFormPanel: {
+    flex: 1,
+    gap: 16,
+    minWidth: 0,
+  },
   adminForm: {
-    gap: 10,
-    maxWidth: 420,
+    gap: 12,
+    maxWidth: 760,
     width: '100%',
   },
   profileFieldBlock: {
@@ -4160,14 +4407,15 @@ const styles = StyleSheet.create({
   },
   profileInput: {
     backgroundColor: '#fbfbfb',
-    borderColor: '#d2d2d2',
-    borderRadius: 100,
+    borderColor: '#D8D0C2',
+    borderRadius: 10,
     borderWidth: 1,
     color: palette.ink,
     fontFamily: 'PoppinsRegular',
     fontSize: 13,
+    minHeight: 38,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 7,
     shadowColor: palette.ink,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -4189,17 +4437,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    justifyContent: 'center',
+    gap: 12,
+    justifyContent: 'flex-start',
     marginTop: 10,
   },
   saveProfileButton: {
     alignItems: 'center',
     backgroundColor: palette.primary,
-    borderRadius: 999,
+    borderRadius: 10,
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    minHeight: 38,
+    minWidth: 132,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
   },
   saveProfileText: {
     color: palette.surface,
@@ -4242,12 +4492,12 @@ const styles = StyleSheet.create({
   signOutButton: {
     alignItems: 'center',
     backgroundColor: '#FFE1D6',
-    borderRadius: 999,
+    borderRadius: 10,
     flexDirection: 'row',
     gap: 6,
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
   },
   signOutText: {
     color: palette.danger,

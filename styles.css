@@ -221,6 +221,14 @@ body {
     color: #83d7bd
 }
 
+.brand-logo {
+    display: block;
+    width: 38px;
+    height: 38px;
+    object-fit: contain;
+    flex: 0 0 38px
+}
+
 .brand-mark {
     width: 32px;
     height: 32px;
@@ -1066,6 +1074,12 @@ footer .brand {
 
 footer .brand-mark {
     width: 27px
+}
+
+footer .brand-logo {
+    width: 30px;
+    height: 30px;
+    flex-basis: 30px
 }
 
 footer p {
