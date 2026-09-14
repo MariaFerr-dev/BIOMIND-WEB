@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "installCommand": "npm ci --prefix ui",
+  "buildCommand": "npm ci --prefix ui && npm run build",
+  "outputDirectory": ".",
+  "cleanUrls": true,
+  "trailingSlash": true
+}
