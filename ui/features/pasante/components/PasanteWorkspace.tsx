@@ -2222,10 +2222,18 @@ const styles = StyleSheet.create({
   },
   summarySection: {
     backgroundColor: pasantePalette.surface,
+    borderColor: pasantePalette.border,
+    borderRadius: 28,
+    borderWidth: 1,
+    elevation: 2,
     gap: 16,
     marginHorizontal: -30,
     paddingHorizontal: 32,
     paddingVertical: 20,
+    shadowColor: pasantePalette.shadow,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
   },
   summarySectionTitle: {
     fontFamily: 'SulphurPointBold',

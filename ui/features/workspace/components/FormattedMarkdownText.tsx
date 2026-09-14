@@ -186,6 +186,8 @@ const styles = StyleSheet.create({
   },
   container: {
     gap: 7,
+    minWidth: 0,
+    width: '100%',
   },
   heading: {
     fontFamily: 'PoppinsSemiBold',
@@ -197,9 +199,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     flexDirection: 'row',
     gap: 8,
+    minWidth: 0,
   },
   listText: {
     flex: 1,
+    minWidth: 0,
   },
   marker: {
     fontFamily: 'PoppinsSemiBold',
@@ -216,5 +220,6 @@ const styles = StyleSheet.create({
   },
   text: {
     fontFamily: 'PoppinsRegular',
+    minWidth: 0,
   },
 });

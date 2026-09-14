@@ -18,6 +18,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -308,62 +309,71 @@ export function GeminiAssistantModule({
     setSelectedPromptId('');
   };
 
+  const confirmDeleteConversation = async (conversation: WorkspaceAssistantConversation) => {
+    const remaining = visibleConversations.filter((item) => item.id !== conversation.id);
+    let nextConversation = conversation.id === activeConversationId
+      ? remaining[0]
+      : visibleConversations.find((item) => item.id === activeConversationId);
+
+    if (!nextConversation) {
+      const now = new Date().toISOString();
+      nextConversation = {
+        id: buildConversationId(),
+        title: 'Conversación nueva',
+        createdAt: now,
+        updatedAt: now,
+        messageCount: welcomeHistory.length,
+        messages: welcomeHistory,
+      };
+      remaining.push(nextConversation);
+    }
+
+    const nextMessages = nextConversation.messages?.length
+      ? nextConversation.messages
+      : welcomeHistory;
+    setConversations(remaining);
+    setActiveConversationId(nextConversation.id);
+    setMessages(nextMessages);
+    setDraft('');
+    setErrorMessage('');
+
+    try {
+      await saveProjectMessages({
+        assistantQuestionsEnabled,
+        conversationId: nextConversation.id,
+        conversationTitle: nextConversation.title,
+        existingConversations: remaining.filter((item) => item.id !== nextConversation.id),
+        messages: nextMessages,
+        projectId: selectedProjectId,
+        projectTitle: selectedProject?.title || emptyStateLabel,
+        session,
+        chatChannel,
+      });
+    } catch (error) {
+      setErrorMessage('No pudimos eliminar la conversación. Intenta nuevamente.');
+    }
+  };
+
   const deleteConversation = (conversation: WorkspaceAssistantConversation) => {
-    Alert.alert(
-      'Eliminar conversación',
-      `¿Quieres eliminar “${conversation.title || 'Conversación'}”? Esta acción no se puede deshacer.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            const remaining = visibleConversations.filter((item) => item.id !== conversation.id);
-            let nextConversation = conversation.id === activeConversationId
-              ? remaining[0]
-              : visibleConversations.find((item) => item.id === activeConversationId);
+    const message = `¿Quieres eliminar “${conversation.title || 'Conversación'}”? Esta acción no se puede deshacer.`;
 
-            if (!nextConversation) {
-              const now = new Date().toISOString();
-              nextConversation = {
-                id: buildConversationId(),
-                title: 'Conversación nueva',
-                createdAt: now,
-                updatedAt: now,
-                messageCount: welcomeHistory.length,
-                messages: welcomeHistory,
-              };
-              remaining.push(nextConversation);
-            }
+    if (Platform.OS === 'web') {
+      if (window.confirm(message)) {
+        void confirmDeleteConversation(conversation);
+      }
+      return;
+    }
 
-            const nextMessages = nextConversation.messages?.length
-              ? nextConversation.messages
-              : welcomeHistory;
-            setConversations(remaining);
-            setActiveConversationId(nextConversation.id);
-            setMessages(nextMessages);
-            setDraft('');
-            setErrorMessage('');
-
-            try {
-              await saveProjectMessages({
-                assistantQuestionsEnabled,
-                conversationId: nextConversation.id,
-                conversationTitle: nextConversation.title,
-                existingConversations: remaining.filter((item) => item.id !== nextConversation.id),
-                messages: nextMessages,
-                projectId: selectedProjectId,
-                projectTitle: selectedProject?.title || emptyStateLabel,
-                session,
-                chatChannel,
-              });
-            } catch (error) {
-              setErrorMessage('No pudimos eliminar la conversación. Intenta nuevamente.');
-            }
-          },
+    Alert.alert('Eliminar conversación', message, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar',
+        style: 'destructive',
+        onPress: () => {
+          void confirmDeleteConversation(conversation);
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const sendPrompt = async (promptText: string, inputMode: 'manual' | 'voice' = 'manual') => {
@@ -706,7 +716,7 @@ export function GeminiAssistantModule({
                   )}
 
                   {/* Burbuja */}
-                  <View style={styles.messageBubble}>
+                  <View style={styles.messageBubbleWrap}>
                     <View
                       style={[
                         styles.messageBubble,
@@ -1193,9 +1203,11 @@ const styles = StyleSheet.create({
   // â”€â”€ FEED â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   feed: {
     gap: 12,
+    overflow: 'hidden',
     paddingTop: 4,
   },
   messageWrap: {
+    minWidth: 0,
     width: '100%',
   },
   messageWrapIncoming: {
@@ -1210,12 +1222,15 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   messageBubble: {
+    flexShrink: 1,
+    minWidth: 0,
+    overflow: 'hidden',
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 5,
   },
   messageBubbleIncoming: {
-    maxWidth: '95%',
+    maxWidth: '100%',
     backgroundColor: instructorPalette.surface,
     borderWidth: 1,
     borderColor: instructorPalette.border,
@@ -1230,14 +1245,14 @@ const styles = StyleSheet.create({
   messageBubbleOutgoing: {
     backgroundColor: instructorPalette.secondary,
     borderRadius: 20, 
-    maxWidth: '95%',          
+    maxWidth: '100%',
     borderBottomRightRadius: 4,
     shadowColor: instructorPalette.primary,
     shadowOpacity: 0.25,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
-    marginLeft : 70, // se ancla al borde derecho
+    marginLeft: 0,
   },
   messageHeader: {
     flexDirection: 'row',
@@ -1252,22 +1267,26 @@ const styles = StyleSheet.create({
   },
   messageText: {
     color: instructorPalette.text,
+    flexShrink: 1,
     fontFamily: 'PoppinsRegular',
     fontSize: 14,
     lineHeight: 21,
+    minWidth: 0,
   },
 
   messageBubbleWrap: {
     flex: 1,
     gap: 4,
-    maxWidth: '95%',               // â† limita el ancho total incluyendo timestamp
+    maxWidth: '86%',
+    minWidth: 0,
+    overflow: 'hidden',
   },
 
   // â”€â”€ AVATAR del asistente â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   messageAvatar: {
     width: 34,
     height: 34,
-    marginRight: -14,
+    marginRight: 0,
     marginBottom: 16,
     borderRadius: 17,
     backgroundColor: instructorPalette.secondary,

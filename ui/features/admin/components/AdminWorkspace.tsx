@@ -533,7 +533,9 @@ function HeaderCard({ session }: { session: AuthenticatedSession }) {
             Controla usuarios, roles, fichas, asignaciones académicas, pasantes y trimestres.
           </Text>
         </View>
-        <UserAvatar name={session.name} photoUrl={session.photoUrl} size={82} />
+        <View style={styles.headerAvatarWrap}>
+          <UserAvatar name={session.name} photoUrl={session.photoUrl} size={82} />
+        </View>
       </View>
     </View>
   );
@@ -3130,6 +3132,9 @@ const styles = StyleSheet.create({
   headerCopy: {
     flex: 1,
     gap: 8,
+  },
+  headerAvatarWrap: {
+    marginTop: 26,
   },
   headerTitle: {
     color: palette.dark,

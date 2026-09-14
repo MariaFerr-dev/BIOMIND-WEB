@@ -1,5 +1,5 @@
 export const learnerPalette = {
-  background: '#f4f4f4',
+  background: '#FFFFFF',
   contentProfile: 'transparent',
 
   surface: '#FFFFFF',

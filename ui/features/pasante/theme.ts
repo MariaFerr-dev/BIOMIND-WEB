@@ -1,5 +1,5 @@
 export const pasantePalette = {
-  background: '#F6F3F1',
+  background: '#FFFFFF',
   surface: '#FFFFFF',
   surfaceMuted: '#FFF5F1',
   text: '#5E544E',

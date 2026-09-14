@@ -1,8 +1,8 @@
 import { Background } from "@react-navigation/elements";
 
 export const instructorPalette = {
-  background: '#f4f4f4',
-  backgroundTwo: '#f7f5f5',
+  background: '#FFFFFF',
+  backgroundTwo: '#FFFFFF',
   contentProfile: 'transparent',
   surface: '#FFFFFF',
   surfaceHover: '#f4fbf9b8',
