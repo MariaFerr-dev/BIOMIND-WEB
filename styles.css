@@ -1036,6 +1036,38 @@ body {
     margin: 19px 0 27px
 }
 
+.cta-actions {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px
+}
+
+.cta-qr {
+    display: block;
+    width: 112px;
+    height: 112px;
+    padding: 8px;
+    border-radius: 15px;
+    background: #fff;
+    box-shadow: 0 12px 30px rgba(16, 93, 78, .16);
+    transition: transform .2s ease, box-shadow .2s ease
+}
+
+.cta-qr:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 34px rgba(16, 93, 78, .22)
+}
+
+.cta-qr img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 7px
+}
+
 .cta-leaf {
     position: absolute;
     border-radius: 80% 0 80% 0;
@@ -1347,6 +1379,11 @@ footer small {
 
     .cta-section {
         padding: 76px 24px
+    }
+
+    .cta-actions {
+        flex-direction: column;
+        gap: 18px
     }
 }
 
