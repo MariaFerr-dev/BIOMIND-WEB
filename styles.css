@@ -1435,3 +1435,26 @@ footer small {
 #academic-competencias h3,#academic-rap h3,#academic-asignaciones h3{font-family:Poppins,"Segoe UI",sans-serif!important;font-style:normal!important;font-weight:700!important;letter-spacing:-.65px!important;color:#17483f!important}
 .admin-welcome{background:linear-gradient(112deg,#dff6ed 0%,#aee6ce 52%,#73c9aa 100%)!important;border-color:#8ed6bd!important;box-shadow:0 20px 44px rgba(8,105,84,.2)!important}.admin-welcome h2{color:#17483f!important}.admin-welcome .welcome-greeting,.admin-welcome .welcome-greeting strong{color:#245d50!important}.admin-welcome>div>span{color:#3d7265!important}.admin-welcome .greeting-star{color:#b97835!important}
 #perfil .tab-heading p:last-child{display:none}
+
+/* Recursos de la presentación */
+.resources-section { scroll-margin-top: 100px; }
+.resources-heading { max-width: 700px; margin-bottom: 32px; }
+.resources-heading > p:last-child { color: var(--muted); line-height: 1.8; margin-top: 18px; }
+.resources-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.resource-card { display: flex; flex-direction: column; align-items: flex-start; padding: 30px; border: 1px solid var(--line); border-radius: 22px; background: #fff; color: var(--ink); text-decoration: none; transition: border-color .2s, box-shadow .2s; }
+.resource-card:hover { border-color: var(--green); box-shadow: 0 12px 28px #117c7212; }
+.resource-card:focus-visible { outline: 3px solid var(--green); outline-offset: 4px; }
+.resource-tag { background: var(--mint); color: var(--deep); padding: 6px 10px; border-radius: 8px; font-size: 10px; font-weight: 700; letter-spacing: 1px; }
+.resource-card h3 { margin: 20px 0 10px; font-size: 21px; overflow-wrap: anywhere; }
+.resource-card p { margin: 0 0 24px; color: var(--muted); font-size: 14px; line-height: 1.8; }
+.resource-action { display: flex; justify-content: space-between; gap: 16px; width: 100%; margin-top: auto; color: var(--deep); font-size: 13px; font-weight: 700; }
+.resources-note { margin-top: 20px; color: var(--muted); font-size: 12px; }
+.presentation-qr { margin: 0; padding: 18px; border-radius: 18px; background: #fff; box-shadow: 0 12px 30px #105d4e18; }
+.presentation-qr img { display: block; width: 200px; max-width: 100%; height: auto; }
+.presentation-qr figcaption { margin-top: 12px; color: var(--deep); font-size: 11px; font-weight: 500; }
+.cta-actions { flex-wrap: wrap; gap: 28px; }
+@media (max-width: 600px) {
+  .resources-grid { grid-template-columns: 1fr; }
+  .resource-card { padding: 24px; }
+  .cta-actions { flex-direction: column; }
+}
